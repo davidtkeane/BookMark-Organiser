@@ -5,6 +5,11 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.0] - 2026-03-02
+
+### Added
+- **Tactical Hero Banner**: Designed and integrated a high-fidelity SVG hero banner for the `README.md`. Features animated scanning effects, neural network nodes, and core Ranger branding for a professional frontier-AI aesthetic.
+
 ## [3.10.0] - 2026-03-02
 
 ### Added

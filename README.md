@@ -1,5 +1,9 @@
 # MarkFlow - The Ultimate AI-Powered Bookmark Manager 🎖️
 
+<p align="center">
+  <img src="public/banner.svg" alt="MarkFlow Banner" width="100%">
+</p>
+
 MarkFlow is a lightning-fast, local-first bookmark manager that uses frontier AI to organize, enrich, and clean your chaotic bookmark collections. Built for developers, power users, and the Ranger Trinity, it handles 10,000+ bookmarks with ease.
 
 ## ✨ Key Features
