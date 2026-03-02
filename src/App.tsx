@@ -1468,11 +1468,16 @@ export default function App() {
                             <Eye size={16} />
                           </button>
                         )}
-                        <button onClick={async () => {
+                        <button onClick={async (e) => {
+                          e.stopPropagation();
                           const updated = { ...bookmark, readLater: bookmark.readLater ? 0 : 1 };
                           const newBms = bookmarks.map(b => b.id === bookmark.id ? updated : b);
                           setBookmarks(newBms);
-                          await saveBookmarksToDB(newBms);
+                          await fetch('/api/bookmarks/batch', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ bookmarks: [updated] })
+                          });
                         }} className={`p-1.5 rounded-md transition-colors ${bookmark.readLater ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`} title={bookmark.readLater ? "Remove from Read Later" : "Read Later"}>
                           <BookOpen size={16} />
                         </button>
@@ -1484,9 +1489,17 @@ export default function App() {
                         <a href={bookmark.url} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Open Link">
                           <LinkIcon size={16} />
                         </a>
-                        <button onClick={async () => {
-                          const newBms = bookmarks.filter(b => b.id !== bookmark.id);
-                          await saveBookmarksToDB(newBms);
+                        <button onClick={async (e) => {
+                          e.stopPropagation();
+                          if (confirm("Permanently delete this bookmark?")) {
+                            try {
+                              await fetch(`/api/bookmarks/${bookmark.id}`, { method: 'DELETE' });
+                              setBookmarks(bookmarks.filter(b => b.id !== bookmark.id));
+                            } catch (err) {
+                              console.error("Failed to delete bookmark", err);
+                              alert("Failed to delete bookmark.");
+                            }
+                          }
                         }} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
                           <Trash2 size={16} />
                         </button>
@@ -1508,8 +1521,15 @@ export default function App() {
                     onArchive={() => handleArchiveLocally(bookmark)}
                     isArchiving={isArchiving === bookmark.id}
                     onDelete={async () => {
-                      const newBms = bookmarks.filter(b => b.id !== bookmark.id);
-                      await saveBookmarksToDB(newBms);
+                      if (confirm("Permanently delete this bookmark?")) {
+                        try {
+                          await fetch(`/api/bookmarks/${bookmark.id}`, { method: 'DELETE' });
+                          setBookmarks(bookmarks.filter(b => b.id !== bookmark.id));
+                        } catch (err) {
+                          console.error("Failed to delete bookmark", err);
+                          alert("Failed to delete bookmark.");
+                        }
+                      }
                     }}
                     onResurrect={() => handleResurrect(bookmark)}
                     onUpdate={(updatedBookmark: any) => {
@@ -2072,11 +2092,22 @@ export default function App() {
                 </button>
                 <button 
                   onClick={async () => {
-                    const newBookmarks = bookmarks.map(b => b.id === geekModeBookmark.id ? geekModeBookmark : b);
+                    const updatedBookmark = geekModeBookmark;
+                    const newBookmarks = bookmarks.map(b => b.id === updatedBookmark.id ? updatedBookmark : b);
                     setBookmarks(newBookmarks);
-                    await saveBookmarksToDB(newBookmarks);
-                    setGeekModeBookmark(null);
-                    awardXp(10);
+                    
+                    try {
+                      await fetch('/api/bookmarks/batch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ bookmarks: [updatedBookmark] })
+                      });
+                      setGeekModeBookmark(null);
+                      awardXp(10);
+                    } catch (err) {
+                      console.error("Failed to save bookmark", err);
+                      alert("Failed to save changes. Please try again.");
+                    }
                   }}
                   className="px-8 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center gap-2"
                 >
@@ -2909,6 +2940,7 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ bookmarks: [updated] })
           });
+          setSelectedBookmark(updated);
         }}
         onDelete={(id: string) => {
           const newBms = bookmarks.filter(b => b.id !== id);
@@ -3656,9 +3688,16 @@ function BookmarkDetailModal({ isOpen, onClose, bookmark, onUpdate, onDelete }: 
                 </button>
               </div>
               <button 
-                onClick={() => {
+                onClick={async () => {
                   if (confirm("Permanently delete this bookmark?")) {
-                    onDelete(bookmark.id);
+                    try {
+                      await fetch(`/api/bookmarks/${bookmark.id}`, { method: 'DELETE' });
+                      setBookmarks(bookmarks.filter(b => b.id !== bookmark.id));
+                      onClose();
+                    } catch (err) {
+                      console.error("Failed to delete bookmark", err);
+                      alert("Failed to delete bookmark.");
+                    }
                   }
                 }}
                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
