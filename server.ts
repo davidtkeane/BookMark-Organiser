@@ -38,6 +38,13 @@ db.exec(`
     content TEXT,
     timestamp TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS stats (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+
+  INSERT OR IGNORE INTO stats (key, value) VALUES ('xp', '0');
 `);
 
 // Safe migrations for existing databases
@@ -47,6 +54,8 @@ try { db.exec('ALTER TABLE bookmarks ADD COLUMN imageUrl TEXT;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN readLater INTEGER DEFAULT 0;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN source TEXT DEFAULT "manual";'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN archivedAt TEXT;'); } catch (e) {}
+try { db.exec("CREATE TABLE IF NOT EXISTS stats (key TEXT PRIMARY KEY, value TEXT);"); } catch (e) {}
+try { db.exec("INSERT OR IGNORE INTO stats (key, value) VALUES ('xp', '0');"); } catch (e) {}
 
 async function startServer() {
   const app = express();
@@ -56,6 +65,30 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // --- API ROUTES ---
+
+  app.get("/api/stats", (req, res) => {
+    try {
+      const stmt = db.prepare('SELECT * FROM stats');
+      const rows = stmt.all();
+      const stats: any = {};
+      rows.forEach((r: any) => stats[r.key] = r.value);
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/stats/xp", (req, res) => {
+    const { amount } = req.body;
+    try {
+      const currentXp = parseInt(db.prepare('SELECT value FROM stats WHERE key = ?').get('xp')?.value || '0');
+      const newXp = currentXp + (amount || 0);
+      db.prepare('UPDATE stats SET value = ? WHERE key = ?').run(newXp.toString(), 'xp');
+      res.json({ success: true, xp: newXp });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
 
   app.get("/api/chat", (req, res) => {
     try {

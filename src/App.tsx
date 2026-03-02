@@ -43,8 +43,8 @@ export default function App() {
   const [isDetectingDNA, setIsDetectingDNA] = useState(false);
   
   // Gamification State
-  const [xp, setXp] = useState(() => Number(localStorage.getItem('librarian_xp') || '0'));
-  const [level, setLevel] = useState(() => Math.floor(Math.sqrt(xp / 100)) + 1);
+  const [xp, setXp] = useState(0);
+  const [level, setLevel] = useState(1);
   const [showLevelUp, setShowLevelUp] = useState(false);
   
   // Time Capsule State
@@ -58,20 +58,36 @@ export default function App() {
   const [autoPromptDelay, setAutoPromptDelay] = useState(15); // seconds
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [showAutoPrompt, setShowAutoPrompt] = useState(false);
+  const [autoPromptDismissedUntil, setAutoPromptDismissedUntil] = useState(0);
+  const autoPromptTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [customMatrixLogo, setCustomMatrixLogo] = useState(() => localStorage.getItem('custom_matrix_logo') || null);
 
   useEffect(() => {
-    if (!autoPromptEnabled || showChat) return;
+    if (!autoPromptEnabled || showChat || Date.now() < autoPromptDismissedUntil) return;
 
     const timer = setInterval(() => {
       const idleTime = (Date.now() - lastActivity) / 1000;
-      if (idleTime >= autoPromptDelay && !showAutoPrompt) {
+      if (idleTime >= autoPromptDelay && !showAutoPrompt && Date.now() > autoPromptDismissedUntil) {
         setShowAutoPrompt(true);
       }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [lastActivity, autoPromptEnabled, autoPromptDelay, showChat, showAutoPrompt]);
+  }, [lastActivity, autoPromptEnabled, autoPromptDelay, showChat, showAutoPrompt, autoPromptDismissedUntil]);
+
+  // Auto-hide prompt after 5 seconds if no interaction
+  useEffect(() => {
+    if (showAutoPrompt) {
+      autoPromptTimerRef.current = setTimeout(() => {
+        setShowAutoPrompt(false);
+      }, 5000);
+    } else {
+      if (autoPromptTimerRef.current) clearTimeout(autoPromptTimerRef.current);
+    }
+    return () => {
+      if (autoPromptTimerRef.current) clearTimeout(autoPromptTimerRef.current);
+    };
+  }, [showAutoPrompt]);
 
   const resetActivity = useCallback(() => {
     setLastActivity(Date.now());
@@ -88,16 +104,25 @@ export default function App() {
     };
   }, [resetActivity]);
 
-  const awardXp = (amount: number) => {
-    setXp(prev => {
-      const newXp = prev + amount;
-      localStorage.setItem('librarian_xp', String(newXp));
-      const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
-      if (newLevel > Math.floor(Math.sqrt(prev / 100)) + 1) {
-        setShowLevelUp(true);
+  const awardXp = async (amount: number) => {
+    try {
+      const res = await fetch('/api/stats/xp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const oldLevel = Math.floor(Math.sqrt(xp / 100)) + 1;
+        const newLevel = Math.floor(Math.sqrt(data.xp / 100)) + 1;
+        setXp(data.xp);
+        if (newLevel > oldLevel) {
+          setShowLevelUp(true);
+        }
       }
-      return newXp;
-    });
+    } catch (e) {
+      console.error("Failed to award XP", e);
+    }
   };
 
   useEffect(() => {
@@ -212,6 +237,13 @@ export default function App() {
     fetch('/api/chat')
       .then(res => res.json())
       .then(data => setChatMessages(data))
+      .catch(() => {});
+
+    fetch('/api/stats')
+      .then(res => res.json())
+      .then(data => {
+        if (data.xp) setXp(parseInt(data.xp));
+      })
       .catch(() => {});
 
     fetch('/api/local-browsers')
@@ -2388,30 +2420,44 @@ export default function App() {
             exit={{ y: 100, opacity: 0 }}
             className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-md px-4"
           >
-            <div className="bg-slate-900 text-white rounded-2xl shadow-2xl p-4 border border-slate-700 flex items-center gap-4">
-              <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center shrink-0 animate-pulse">
-                <Sparkles size={24} />
+            <div className="bg-slate-900 text-white rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
+              <div className="p-4 flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center shrink-0 animate-pulse">
+                  <Sparkles size={24} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold">Need a hand with your library?</h4>
+                  <p className="text-xs text-slate-400">I can help you find, move, or summarize anything.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      setShowAutoPrompt(false);
+                      setAutoPromptDismissedUntil(Date.now() + 5 * 60 * 1000);
+                    }}
+                    className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
+                    title="Dismiss for 5 minutes"
+                  >
+                    <XCircle size={20} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowAutoPrompt(false);
+                      setShowChat(true);
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    Chat Now
+                  </button>
+                </div>
               </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-bold">Need a hand with your library?</h4>
-                <p className="text-xs text-slate-400">I can help you find, move, or summarize anything.</p>
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setShowAutoPrompt(false)}
-                  className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
-                >
-                  <XCircle size={20} />
-                </button>
-                <button 
-                  onClick={() => {
-                    setShowAutoPrompt(false);
-                    setShowChat(true);
-                  }}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-bold transition-colors"
-                >
-                  Chat Now
-                </button>
+              <div className="h-1 bg-slate-800 w-full">
+                <motion.div 
+                  initial={{ width: "100%" }}
+                  animate={{ width: "0%" }}
+                  transition={{ duration: 5, ease: "linear" }}
+                  className="h-full bg-indigo-500"
+                />
               </div>
             </div>
           </motion.div>
@@ -2445,37 +2491,62 @@ export default function App() {
 function LevelUpModal({ isOpen, onClose, level }: any) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+    <div className="fixed inset-0 bg-indigo-900/40 backdrop-blur-md flex items-center justify-center z-[100] p-4">
       <motion.div 
         initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
         animate={{ opacity: 1, scale: 1, rotate: 0 }}
-        className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm overflow-hidden text-center p-12 relative"
+        exit={{ opacity: 0, scale: 0.5, rotate: 10 }}
+        className="bg-white rounded-[2.5rem] shadow-[0_0_50px_rgba(79,70,229,0.3)] w-full max-w-sm overflow-hidden text-center p-8 relative"
       >
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-gradient-x"></div>
-        <div className="w-24 h-24 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-          <Trophy size={48} className="animate-bounce" />
-        </div>
-        <h2 className="text-3xl font-black text-slate-900 mb-2 uppercase tracking-tighter">Level Up!</h2>
-        <p className="text-slate-500 mb-8 font-medium">You've reached <span className="text-amber-600 font-bold">Librarian Level {level}</span></p>
+        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-50 to-transparent -z-10"></div>
         
-        <div className="space-y-4">
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
-            <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
-              <Zap size={20} />
-            </div>
-            <div className="text-left">
-              <h4 className="text-sm font-bold text-slate-900">New Title Unlocked</h4>
-              <p className="text-xs text-slate-500">{level > 10 ? 'Master Curator' : level > 5 ? 'Senior Archivist' : 'Junior Librarian'}</p>
-            </div>
+        <div className="w-24 h-24 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-200 rotate-3">
+          <Trophy size={48} className="text-white" />
+        </div>
+        
+        <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">LEVEL UP!</h2>
+        <p className="text-slate-500 font-medium mb-6">You've reached <span className="text-indigo-600 font-bold">Level {level}</span></p>
+        
+        <div className="bg-slate-50 rounded-2xl p-4 mb-8 border border-slate-100">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+            <span>Librarian Rank</span>
+            <span className="text-indigo-500">{level > 10 ? 'Master Curator' : level > 5 ? 'Senior Archivist' : 'Junior Librarian'}</span>
+          </div>
+          <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 1, delay: 0.5 }}
+              className="bg-indigo-600 h-full"
+            />
           </div>
         </div>
-
+        
         <button 
           onClick={onClose}
-          className="mt-10 w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-lg hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+          className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95"
         >
           Keep Organizing
         </button>
+        
+        <div className="mt-6 flex justify-center gap-2">
+          {[...Array(3)].map((_, i) => (
+            <motion.div 
+              key={i}
+              animate={{ 
+                scale: [1, 1.2, 1],
+                opacity: [0.5, 1, 0.5]
+              }}
+              transition={{ 
+                duration: 2, 
+                repeat: Infinity, 
+                delay: i * 0.3 
+              }}
+            >
+              <Star size={16} className="text-amber-400 fill-amber-400" />
+            </motion.div>
+          ))}
+        </div>
       </motion.div>
     </div>
   );

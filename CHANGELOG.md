@@ -5,6 +5,18 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-03-02
+
+### Added
+- **Librarian Level-Up (Gamification):** Introduced a persistent XP and Level system. Earn XP by importing, organizing, and enriching bookmarks.
+- **Persistent Stats:** XP is now saved to the local SQLite database.
+- **Level Up Modal:** A new celebratory modal appears when you reach a new level.
+
+### Changed
+- **AI Auto-Prompt Refinements:**
+    - The "Talk to AI" popup now automatically disappears after 5 seconds if not interacted with (visualized with a progress bar).
+    - Dismissing the popup with the "X" button now silences it for 5 minutes.
+
 ## [2.7.0] - 2026-03-02
 
 ### Added
