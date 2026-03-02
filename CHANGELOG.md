@@ -5,6 +5,14 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.0] - 2026-03-02
+
+### Added
+- **API Security Vault**: Integrated detailed security instructions for Google Cloud API keys.
+    - **Step-by-Step Guide**: Added instructions to the Wiki on how to create, link billing, and restrict keys.
+    - **Restriction Intelligence**: New documentation on using IP Address and Website (Referrer) restrictions to protect billing accounts.
+    - **Direct Documentation Links**: Added official Google Cloud documentation links to the Settings and Wiki modules for instant access to security best practices.
+
 ## [3.11.0] - 2026-03-02
 
 ### Added

@@ -2265,14 +2265,40 @@ export default function App() {
                               MarkFlow requires a <strong>Google Cloud API Key</strong> with the <strong>Generative Language API</strong> enabled.
                             </p>
                             <ol className="list-decimal pl-5 space-y-2 text-sm text-slate-700 mb-4">
-                              <li>Go to the <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline">Google Cloud Console</a>.</li>
-                              <li>Enable the <strong>Generative Language API</strong>.</li>
-                              <li>Create an API Key and link a <strong>Billing Account</strong> to your project.</li>
+                              <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline">Google Cloud Credentials page</a>.</li>
+                              <li>Click <strong>+ CREATE CREDENTIALS</strong> &gt; <strong>API key</strong>.</li>
+                              <li>Link a <strong>Billing Account</strong> to your project (required for Cloud API).</li>
                               <li>Add the key to your <code>.env</code> file as <code>VITE_GEMINI_API_KEY</code>.</li>
                             </ol>
                             <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-xs text-amber-800 italic">
                               Note: Flash models (1.5/2.0/3.0) are extremely cheap and often fall within a free tier, while Pro models may incur standard usage fees.
                             </div>
+                          </section>
+
+                          <section className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
+                            <h3 className="text-lg font-bold text-emerald-900 mb-3 flex items-center gap-2">
+                              <ShieldCheck className="text-emerald-600" size={20} /> Security & Restrictions
+                            </h3>
+                            <p className="text-emerald-800 text-sm leading-relaxed mb-4">
+                              To prevent unauthorized usage of your billing account, you should restrict your API key immediately:
+                            </p>
+                            <ul className="list-disc pl-5 space-y-2 text-sm text-emerald-900 mb-4">
+                              <li><strong>API Restriction:</strong> Select "Restrict key" and choose only <strong>Generative Language API</strong>.</li>
+                              <li><strong>Application Restriction:</strong> 
+                                <ul className="list-circle pl-5 mt-1 space-y-1">
+                                  <li>For local use: Add your <strong>IP address</strong>.</li>
+                                  <li>For web use: Add your <strong>Website URL</strong> (Referrer).</li>
+                                </ul>
+                              </li>
+                            </ul>
+                            <a 
+                              href="https://cloud.google.com/docs/authentication/api-keys#adding_restrictions_to_api_keys" 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 underline"
+                            >
+                              Official Setup & Security Guide <ChevronRight size={14} />
+                            </a>
                           </section>
                         </motion.div>
                       )}
@@ -2638,6 +2664,18 @@ export default function App() {
                            'Test AI Connection'}
                         </button>
                         
+                        <div className="px-2 flex justify-between items-center">
+                          <a 
+                            href="https://cloud.google.com/docs/authentication/api-keys#adding_restrictions_to_api_keys" 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-[10px] font-bold text-indigo-600 underline hover:text-indigo-800 transition-colors"
+                          >
+                            Secure your API Key (Add Restrictions)
+                          </a>
+                          <span className="text-[9px] text-slate-400 italic">Cloud Console Link</span>
+                        </div>
+
                         {apiKeyError && (
                           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-[11px] text-rose-600 bg-rose-50 p-4 rounded-xl border border-rose-100 flex items-start gap-3">
                             <AlertTriangle size={16} className="shrink-0" />
