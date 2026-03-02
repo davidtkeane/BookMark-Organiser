@@ -2262,13 +2262,17 @@ export default function App() {
                               <Terminal className="text-slate-700" size={20} /> Getting an API Key
                             </h3>
                             <p className="text-slate-600 text-sm leading-relaxed mb-4">
-                              MarkFlow requires a free Google Gemini key to function.
+                              MarkFlow requires a <strong>Google Cloud API Key</strong> with the <strong>Generative Language API</strong> enabled.
                             </p>
-                            <ol className="list-decimal pl-5 space-y-2 text-sm text-slate-700">
-                              <li>Visit the <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline">Google AI Studio</a>.</li>
-                              <li>Click <strong>Create API key</strong>.</li>
-                              <li>Add it to your <code>.env</code> file as <code>VITE_GEMINI_API_KEY</code>.</li>
+                            <ol className="list-decimal pl-5 space-y-2 text-sm text-slate-700 mb-4">
+                              <li>Go to the <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline">Google Cloud Console</a>.</li>
+                              <li>Enable the <strong>Generative Language API</strong>.</li>
+                              <li>Create an API Key and link a <strong>Billing Account</strong> to your project.</li>
+                              <li>Add the key to your <code>.env</code> file as <code>VITE_GEMINI_API_KEY</code>.</li>
                             </ol>
+                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-xs text-amber-800 italic">
+                              Note: Flash models (1.5/2.0/3.0) are extremely cheap and often fall within a free tier, while Pro models may incur standard usage fees.
+                            </div>
                           </section>
                         </motion.div>
                       )}

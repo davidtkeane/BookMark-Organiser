@@ -25,7 +25,9 @@ MarkFlow is a lightning-fast, local-first bookmark manager that uses frontier AI
 
 ### Prerequisites
 *   Node.js (v18+)
-*   A Google Gemini API Key (from [Google AI Studio](https://aistudio.google.com/))
+*   A **Google Cloud API Key** with the **Generative Language API** enabled.
+    *   *Note:* This requires a Google Cloud project with a linked **Billing Account**.
+    *   *Cost:* Gemini **Flash** models (1.5/2.0/3.0) are extremely cost-effective and often include a generous free tier for developers, while **Pro** models offer higher reasoning at standard usage rates.
 
 ### Installation
 
