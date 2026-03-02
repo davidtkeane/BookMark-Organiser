@@ -1,6 +1,10 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
+import os from 'os';
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
 
 // Initialize SQLite Database for permanent storage
 const db = new Database('bookmarks.db');
@@ -17,7 +21,8 @@ db.exec(`
     summary TEXT,
     tags TEXT,
     imageUrl TEXT,
-    readLater INTEGER DEFAULT 0
+    readLater INTEGER DEFAULT 0,
+    source TEXT DEFAULT 'manual'
   );
 `);
 
@@ -26,6 +31,7 @@ try { db.exec('ALTER TABLE bookmarks ADD COLUMN summary TEXT;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN tags TEXT;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN imageUrl TEXT;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN readLater INTEGER DEFAULT 0;'); } catch (e) {}
+try { db.exec('ALTER TABLE bookmarks ADD COLUMN source TEXT DEFAULT "manual";'); } catch (e) {}
 
 async function startServer() {
   const app = express();
@@ -52,10 +58,10 @@ async function startServer() {
   app.post("/api/bookmarks/batch", (req, res) => {
     const { bookmarks } = req.body;
     try {
-      const insert = db.prepare('INSERT OR REPLACE INTO bookmarks (id, title, url, status, folder, dateAdded, summary, tags, imageUrl, readLater) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      const insert = db.prepare('INSERT OR REPLACE INTO bookmarks (id, title, url, status, folder, dateAdded, summary, tags, imageUrl, readLater, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       const insertMany = db.transaction((bms) => {
         for (const b of bms) {
-          insert.run(b.id, b.title, b.url, b.status, b.folder, b.dateAdded, b.summary || null, b.tags ? JSON.stringify(b.tags) : null, b.imageUrl !== undefined ? b.imageUrl : null, b.readLater ? 1 : 0);
+          insert.run(b.id, b.title, b.url, b.status, b.folder, b.dateAdded, b.summary || null, b.tags ? JSON.stringify(b.tags) : null, b.imageUrl !== undefined ? b.imageUrl : null, b.readLater ? 1 : 0, b.source || 'manual');
         }
       });
       insertMany(bookmarks);
@@ -141,6 +147,99 @@ async function startServer() {
       }
     } catch (error) {
       res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Backup and Restore
+  app.get("/api/backup", (req, res) => {
+    const backup = db.prepare('SELECT * FROM bookmarks').all();
+    res.json(backup);
+  });
+
+  // Local Browser Paths (Mac)
+  const home = os.homedir();
+  const browserPaths = {
+    chrome: path.join(home, 'Library/Application Support/Google/Chrome/Default/Bookmarks'),
+    brave: path.join(home, 'Library/Application Support/BraveSoftware/Brave-Browser/Default/Bookmarks'),
+    safari: path.join(home, 'Library/Safari/Bookmarks.plist'),
+    firefox: path.join(home, 'Library/Application Support/Firefox/Profiles')
+  };
+
+  app.get("/api/local-browsers", (req, res) => {
+    const installed = { chrome: false, brave: false, safari: false, firefox: false };
+    if (fs.existsSync(browserPaths.chrome)) installed.chrome = true;
+    if (fs.existsSync(browserPaths.brave)) installed.brave = true;
+    if (fs.existsSync(browserPaths.safari)) installed.safari = true;
+    if (fs.existsSync(browserPaths.firefox)) {
+      try {
+        const profiles = fs.readdirSync(browserPaths.firefox);
+        if (profiles.some(p => p.includes('.default'))) installed.firefox = true;
+      } catch (e) {}
+    }
+    res.json(installed);
+  });
+
+  app.post("/api/import-browser/:browser", (req, res) => {
+    const browser = req.params.browser;
+    const imported: any[] = [];
+    
+    try {
+      if ((browser === 'chrome' || browser === 'brave') && fs.existsSync(browserPaths[browser])) {
+        const data = JSON.parse(fs.readFileSync(browserPaths[browser], 'utf8'));
+        const parseNode = (node: any, folderName: string) => {
+          if (node.type === 'url') {
+            const dateAdded = node.date_added ? new Date(parseInt(node.date_added) / 1000 - 11644473600000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            imported.push({ id: Math.random().toString(36).substr(2, 9), title: node.name || 'Untitled', url: node.url, status: 'unknown', folder: folderName, dateAdded, source: browser });
+          } else if (node.type === 'folder' && node.children) {
+            node.children.forEach((child: any) => parseNode(child, node.name || folderName));
+          }
+        };
+        if (data.roots) {
+          Object.values(data.roots).forEach((root: any) => parseNode(root, 'Imported'));
+        }
+      } else if (browser === 'safari' && fs.existsSync(browserPaths.safari)) {
+        const jsonStr = execSync(`plutil -convert json -r -o - "${browserPaths.safari}"`).toString();
+        const data = JSON.parse(jsonStr);
+        const parseSafariNode = (node: any, folderName: string) => {
+          if (node.WebBookmarkType === 'WebBookmarkTypeLeaf') {
+            imported.push({ id: Math.random().toString(36).substr(2, 9), title: node.URIDictionary?.title || 'Untitled', url: node.URLString, status: 'unknown', folder: folderName, dateAdded: new Date().toISOString().split('T')[0], source: 'safari' });
+          } else if (node.WebBookmarkType === 'WebBookmarkTypeList' && node.Children) {
+            node.Children.forEach((child: any) => parseSafariNode(child, node.Title || folderName));
+          }
+        };
+        if (data.Children) data.Children.forEach((child: any) => parseSafariNode(child, 'Imported'));
+      } else if (browser === 'firefox' && fs.existsSync(browserPaths.firefox)) {
+        const profiles = fs.readdirSync(browserPaths.firefox);
+        const defaultProfile = profiles.find(p => p.includes('.default-release') || p.includes('.default'));
+        if (defaultProfile) {
+          const placesPath = path.join(browserPaths.firefox, defaultProfile, 'places.sqlite');
+          if (fs.existsSync(placesPath)) {
+            const tempPath = path.join(os.tmpdir(), 'temp_places.sqlite');
+            fs.copyFileSync(placesPath, tempPath);
+            const ffDb = new Database(tempPath, { readonly: true });
+            const rows = ffDb.prepare(`SELECT b.title, p.url, b.dateAdded FROM moz_bookmarks b JOIN moz_places p ON b.fk = p.id WHERE b.type = 1 AND p.url LIKE 'http%'`).all();
+            rows.forEach((r: any) => {
+              const dateAdded = r.dateAdded ? new Date(r.dateAdded / 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+              imported.push({ id: Math.random().toString(36).substr(2, 9), title: r.title || 'Untitled', url: r.url, status: 'unknown', folder: 'Imported', dateAdded, source: 'firefox' });
+            });
+            ffDb.close();
+            fs.unlinkSync(tempPath);
+          }
+        }
+      }
+      
+      // Save to DB
+      if (imported.length > 0) {
+        const insert = db.prepare('INSERT OR REPLACE INTO bookmarks (id, title, url, status, folder, dateAdded, source) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        const insertMany = db.transaction((bms) => {
+          for (const b of bms) insert.run(b.id, b.title, b.url, b.status, b.folder, b.dateAdded, b.source);
+        });
+        insertMany(imported);
+      }
+      res.json({ success: true, count: imported.length, bookmarks: imported });
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
     }
   });
 

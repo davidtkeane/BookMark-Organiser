@@ -3,7 +3,8 @@ import {
   Folder, FolderOpen, Link as LinkIcon, AlertTriangle, Trash2, Search, 
   Activity, Copy, Sparkles, Settings, ChevronRight, ChevronDown, 
   MoreVertical, CheckCircle2, XCircle, Loader2, Info, Download, UploadCloud, ListTodo,
-  Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2
+  Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
+  Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
@@ -19,9 +20,11 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [localBrowsers, setLocalBrowsers] = useState<any>({ chrome: false, brave: false, safari: false, firefox: false });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch bookmarks on mount
+  // Fetch bookmarks and local browsers on mount
   useEffect(() => {
     fetch('/api/bookmarks')
       .then(res => res.json())
@@ -33,6 +36,11 @@ export default function App() {
         console.error(err);
         setIsLoading(false);
       });
+
+    fetch('/api/local-browsers')
+      .then(res => res.json())
+      .then(data => setLocalBrowsers(data))
+      .catch(() => {});
   }, []);
 
   const saveBookmarksToDB = async (newBookmarks: any[]) => {
@@ -52,6 +60,62 @@ export default function App() {
     if (!confirm("Are you sure you want to delete all bookmarks?")) return;
     await fetch('/api/bookmarks/clear', { method: 'POST' });
     setBookmarks([]);
+  };
+
+  const handleImportLocalBrowser = async (browser: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/import-browser/${browser}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Successfully imported ${data.count} bookmarks from ${browser}!`);
+        // Refresh bookmarks
+        const bmsRes = await fetch('/api/bookmarks');
+        const bmsData = await bmsRes.json();
+        setBookmarks(bmsData);
+      } else {
+        alert("Failed to import: " + data.error);
+      }
+    } catch (e) {
+      alert("Error importing from local browser.");
+    }
+    setIsLoading(false);
+  };
+
+  const handleBackup = async () => {
+    try {
+      const res = await fetch('/api/backup');
+      const data = await res.json();
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "markflow-backup.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    } catch (e) {
+      alert("Failed to create backup.");
+    }
+  };
+
+  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (!Array.isArray(data)) throw new Error("Invalid backup format");
+        await saveBookmarksToDB(data);
+        alert("Backup restored successfully!");
+      } catch (err) {
+        alert("Error parsing backup file.");
+      }
+      setIsLoading(false);
+      if (restoreInputRef.current) restoreInputRef.current.value = '';
+    };
+    reader.readAsText(file);
   };
 
   // HTML Parser for Universal Import
@@ -272,10 +336,34 @@ export default function App() {
       alert("No bookmarks to export in the current view.");
       return;
     }
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(filteredBookmarks, null, 2));
+    
+    // Generate Netscape Bookmark HTML format
+    let html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- This is an automatically generated file.
+     It will be read and overwritten.
+     DO NOT EDIT! -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>\n`;
+
+    const folders = Array.from(new Set(filteredBookmarks.map(b => b.folder || 'Uncategorized')));
+    
+    folders.forEach(folder => {
+      html += `    <DT><H3 ADD_DATE="${Math.floor(Date.now()/1000)}" LAST_MODIFIED="${Math.floor(Date.now()/1000)}">${folder}</H3>\n    <DL><p>\n`;
+      const folderBms = filteredBookmarks.filter(b => (b.folder || 'Uncategorized') === folder);
+      folderBms.forEach(b => {
+        const dateAdded = b.dateAdded ? Math.floor(new Date(b.dateAdded).getTime() / 1000) : Math.floor(Date.now()/1000);
+        html += `        <DT><A HREF="${b.url}" ADD_DATE="${dateAdded}">${b.title}</A>\n`;
+      });
+      html += `    </DL><p>\n`;
+    });
+    html += `</DL><p>`;
+
+    const dataStr = "data:text/html;charset=utf-8," + encodeURIComponent(html);
     const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href",     dataStr);
-    downloadAnchorNode.setAttribute("download", "markflow-collection.json");
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "markflow-bookmarks.html");
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -303,14 +391,42 @@ export default function App() {
               onChange={handleFileUpload} 
             />
             <button onClick={() => fileInputRef.current?.click()} className="w-full py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-sm">
-              <UploadCloud size={16} />
-              Import Bookmarks
+              <UploadCloudIcon size={16} />
+              Import HTML File
             </button>
             <button onClick={() => setShowRoadmap(true)} className="w-full py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
               <ListTodo size={16} />
               View Roadmap
             </button>
           </div>
+
+          {(localBrowsers.chrome || localBrowsers.brave || localBrowsers.safari || localBrowsers.firefox) && (
+            <>
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Local Browsers</h2>
+              <div className="space-y-2 mb-6">
+                {localBrowsers.chrome && (
+                  <button onClick={() => handleImportLocalBrowser('chrome')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm">
+                    <Chrome size={16} className="text-blue-500" /> Import from Chrome
+                  </button>
+                )}
+                {localBrowsers.brave && (
+                  <button onClick={() => handleImportLocalBrowser('brave')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm">
+                    <Chrome size={16} className="text-orange-500" /> Import from Brave
+                  </button>
+                )}
+                {localBrowsers.safari && (
+                  <button onClick={() => handleImportLocalBrowser('safari')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm">
+                    <Compass size={16} className="text-blue-400" /> Import from Safari
+                  </button>
+                )}
+                {localBrowsers.firefox && (
+                  <button onClick={() => handleImportLocalBrowser('firefox')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm">
+                    <Compass size={16} className="text-orange-600" /> Import from Firefox
+                  </button>
+                )}
+              </div>
+            </>
+          )}
 
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Folders</h2>
           <div className="space-y-1">
@@ -334,6 +450,15 @@ export default function App() {
         </div>
 
         <div className="p-4 border-t border-slate-100 space-y-1">
+          <input type="file" accept=".json" className="hidden" ref={restoreInputRef} onChange={handleRestore} />
+          <button onClick={handleBackup} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
+            <DownloadCloud size={16} />
+            <span>Backup Data</span>
+          </button>
+          <button onClick={() => restoreInputRef.current?.click()} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
+            <UploadCloudIcon size={16} />
+            <span>Restore Data</span>
+          </button>
           <button onClick={clearDatabase} className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 transition-colors w-full p-2 rounded-md hover:bg-red-50">
             <Trash2 size={16} />
             <span>Clear Database</span>

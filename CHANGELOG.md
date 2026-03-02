@@ -1,0 +1,48 @@
+# Changelog
+
+All notable changes to the MarkFlow Bookmark Manager will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.1.0] - 2026-03-01
+
+### Added
+- **Local Browser Auto-Discovery:** Automatically detects installed browsers on macOS (Chrome, Brave, Safari, Firefox).
+- **Direct Browser Import:** One-click import directly from local browser profiles (parses JSON, Plist, and SQLite databases natively).
+- **Backup & Restore:** Added ability to download a complete JSON backup of the SQLite database and restore from it.
+
+### Changed
+- **Export Format:** Upgraded the "Export View" feature to export in the standard Netscape Bookmark HTML format, allowing seamless syncing/importing back into traditional web browsers.
+
+## [1.0.0] - 2026-03-01
+
+### Added
+- **Visual Grid View:** Added a masonry-style grid layout option for bookmarks.
+- **OpenGraph Images:** Automatically fetches and caches OpenGraph/Twitter card images for bookmarks in Grid View.
+- **Read-It-Later Mode:** Added a "Read Later" toggle for bookmarks and a dedicated Smart View in the sidebar.
+- **Shareable Collections:** Added the ability to export specific filtered views or folders.
+- **View Toggles:** Added UI controls to seamlessly switch between List and Grid views.
+
+## [0.9.0] - 2026-03-01
+
+### Added
+- **Link Health Checker:** Added an API endpoint and UI to ping URLs and identify dead links (404s, timeouts).
+- **Wayback Machine Integration:** Added a "Resurrect" button for dead links that automatically queries the Internet Archive API to find and update the URL to the latest working snapshot.
+- **Duplicate Finder:** Added a tool to scan the database and flag bookmarks with identical URLs.
+- **Smart Views:** Added "Dead Links" and "Duplicates" to the sidebar for easy management.
+
+## [0.8.0] - 2026-03-01
+
+### Added
+- **AI Organization:** Integrated Google's Gemini API (`gemini-3-flash-preview`) to automatically categorize uncategorized bookmarks into logical folders.
+- **AI Enrichment:** Added ability to use Gemini AI to read bookmark titles/URLs and generate 1-sentence summaries and relevant smart tags.
+
+## [0.1.0] - 2026-03-01
+
+### Added
+- **Full-Stack Architecture:** Initialized project with React, Vite, Express, and Tailwind CSS.
+- **Persistent Storage:** Implemented local SQLite database (`better-sqlite3`) with WAL mode for fast, reliable storage.
+- **Universal Importer:** Added a drag-and-drop HTML file parser to import standard browser bookmark exports.
+- **Core UI:** Built the main dashboard, sidebar navigation, search bar, and bookmark list components.
+- **Status Badges:** Added visual indicators for bookmark states (Active, Dead Link, Duplicate, Redirect, Archived, Unchecked).
