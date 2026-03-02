@@ -5,6 +5,19 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-01
+
+### Added
+- **Geek Mode:** A new terminal-style modal for viewing raw bookmark metadata (JSON, Date Saved, Source Browser).
+- **Force Fetch Icon:** Added a button in Geek Mode to override missing favicons with DuckDuckGo's icon service.
+- **Breadcrumbs:** Added folder path breadcrumbs to bookmark cards in both list and grid views.
+- **Dynamic Tabs:** Clicking a folder in the sidebar now creates a dynamic tab at the top of the view for better navigation context.
+- **Buy Me a Coffee:** Added a support button to the sidebar.
+
+### Changed
+- **Help & Wiki Theming:** The Help & Wiki modal now fully supports Dark and Matrix themes for better accessibility.
+- **Clear Database Warning:** Updated the warning text to explicitly clarify that clearing the local database does not affect the user's actual browser bookmarks.
+
 ## [2.0.0] - 2026-03-01
 
 ### Added

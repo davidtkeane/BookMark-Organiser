@@ -5,7 +5,7 @@ import {
   MoreVertical, CheckCircle2, XCircle, Loader2, Info, Download, UploadCloud, ListTodo,
   Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
   Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database,
-  RefreshCw, Clock, HelpCircle
+  RefreshCw, Clock, HelpCircle, Terminal
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
@@ -25,6 +25,7 @@ export default function App() {
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0, status: '' });
   const [showOrganizeModal, setShowOrganizeModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [geekModeBookmark, setGeekModeBookmark] = useState<any | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const getTimestamp = () => {
@@ -706,6 +707,10 @@ export default function App() {
             <Settings size={16} />
             <span>Local Setup Guide</span>
           </button>
+          
+          <a href="https://buymeacoffee.com/davidtkeane" target="_blank" rel="noreferrer" className="mt-4 block hover:opacity-90 transition-opacity">
+            <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=davidtkeane&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" className="w-full rounded-md shadow-sm" />
+          </a>
         </div>
       </div>
 
@@ -820,9 +825,15 @@ export default function App() {
                   >
                     <div className="flex items-start gap-4 overflow-hidden w-full">
                       <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-1">
-                        <img src={`https://www.google.com/s2/favicons?domain=${bookmark.url}&sz=32`} alt="" className="w-4 h-4" onError={(e) => e.currentTarget.style.display = 'none'} />
+                        <img src={bookmark.customIconUrl || `https://www.google.com/s2/favicons?domain=${bookmark.url}&sz=32`} alt="" className="w-4 h-4" onError={(e) => e.currentTarget.style.display = 'none'} referrerPolicy="no-referrer" />
                       </div>
                       <div className="overflow-hidden flex-1">
+                        <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-1 font-medium">
+                          <Folder size={10} />
+                          <span>Bookmarks</span>
+                          <ChevronRight size={10} />
+                          <span className="text-slate-500">{bookmark.folder || 'Uncategorized'}</span>
+                        </div>
                         <h3 className="text-sm font-medium text-slate-900 truncate">{bookmark.title}</h3>
                         <div className="flex items-center gap-3 mt-1">
                           <span className="text-xs text-slate-500 font-mono truncate max-w-[300px]">{bookmark.url}</span>
@@ -852,6 +863,9 @@ export default function App() {
                     <div className="flex items-center gap-4 shrink-0 ml-4">
                       <StatusBadge status={bookmark.status} />
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setGeekModeBookmark(bookmark)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Geek Mode (Metadata)">
+                          <Terminal size={16} />
+                        </button>
                         <button onClick={async () => {
                           const updated = { ...bookmark, readLater: bookmark.readLater ? 0 : 1 };
                           const newBms = bookmarks.map(b => b.id === bookmark.id ? updated : b);
@@ -886,6 +900,7 @@ export default function App() {
                     key={bookmark.id} 
                     bookmark={bookmark} 
                     idx={idx}
+                    onGeekMode={() => setGeekModeBookmark(bookmark)}
                     onDelete={async () => {
                       const newBms = bookmarks.filter(b => b.id !== bookmark.id);
                       await saveBookmarksToDB(newBms);
@@ -1105,29 +1120,86 @@ export default function App() {
         </div>
       )}
 
+      {/* Geek Mode Modal */}
+      {geekModeBookmark && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-900 rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-slate-700 font-mono text-slate-300 max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+              <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-3">
+                <Terminal className="w-6 h-6" />
+                Geek Mode: Bookmark Metadata
+              </h2>
+              <button onClick={() => setGeekModeBookmark(null)} className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-full transition-colors">
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-4 text-sm">
+              <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 overflow-x-auto">
+                <pre className="text-emerald-300">
+                  {JSON.stringify(geekModeBookmark, null, 2)}
+                </pre>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-6">
+                <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                  <span className="block text-xs text-slate-500 mb-1">Date Saved</span>
+                  <span className="text-white">{geekModeBookmark.dateAdded ? new Date(geekModeBookmark.dateAdded).toLocaleString() : 'Unknown'}</span>
+                </div>
+                <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                  <span className="block text-xs text-slate-500 mb-1">Source Browser</span>
+                  <span className="text-white capitalize">{geekModeBookmark.source || 'Imported'}</span>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button 
+                  onClick={async () => {
+                    const domain = new URL(geekModeBookmark.url).hostname;
+                    const duckDuckGoIcon = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+                    const updated = { ...geekModeBookmark, customIconUrl: duckDuckGoIcon };
+                    const newBookmarks = bookmarks.map(b => b.id === updated.id ? updated : b);
+                    setBookmarks(newBookmarks);
+                    setGeekModeBookmark(updated);
+                    await saveBookmarksToDB(newBookmarks);
+                  }}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg text-sm font-medium transition-colors border border-slate-700 flex items-center gap-2"
+                >
+                  <RefreshCw size={16} /> Force Fetch Alternative Icon
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Help & Wiki Modal */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-[#FAFAFA] rounded-2xl p-8 max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-[#FAFAFA] dark:bg-slate-900 rounded-2xl p-8 max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-y-auto border dark:border-slate-800"
           >
-            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-              <h2 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-                <HelpCircle className="text-indigo-600 w-8 h-8" />
+            <div className="flex justify-between items-center mb-6 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                <HelpCircle className="text-indigo-600 dark:text-indigo-400 w-8 h-8" />
                 Help & Wiki
               </h2>
-              <button onClick={() => setShowHelpModal(false)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-full transition-colors">
+              <button onClick={() => setShowHelpModal(false)} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
                 <XCircle size={28} />
               </button>
             </div>
             
-            <div className="space-y-8 text-lg leading-relaxed text-slate-800 font-sans">
+            <div className="space-y-8 text-lg leading-relaxed text-slate-800 dark:text-slate-300 font-sans">
               
-              <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <Database className="text-emerald-600" /> 1. Where is my data saved?
+              <section className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                  <Database className="text-emerald-600 dark:text-emerald-400" /> 1. Where is my data saved?
                 </h3>
                 <p className="mb-3">
                   Everything you do in MarkFlow is saved <strong>locally on your computer</strong>. 
@@ -1137,9 +1209,9 @@ export default function App() {
                 </p>
               </section>
 
-              <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <DownloadCloud className="text-blue-600" /> 2. Why and how should I backup?
+              <section className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                  <DownloadCloud className="text-blue-600 dark:text-blue-400" /> 2. Why and how should I backup?
                 </h3>
                 <p className="mb-3">
                   Because your data lives only on your computer, if you delete it by mistake, it is gone!
@@ -1149,14 +1221,14 @@ export default function App() {
                   <li>Click <strong>Backup Entire Database</strong>.</li>
                   <li>Save this file to a safe folder, like a "Backups" folder on your Desktop.</li>
                 </ul>
-                <p className="text-slate-600 italic">
+                <p className="text-slate-600 dark:text-slate-400 italic">
                   Tip: The app automatically adds the date and time to the file name, so your backups will never overwrite each other!
                 </p>
               </section>
 
-              <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <RefreshCw className="text-purple-600" /> 3. Magic Sync vs. Single Import
+              <section className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                  <RefreshCw className="text-purple-600 dark:text-purple-400" /> 3. Magic Sync vs. Single Import
                 </h3>
                 <p className="mb-3">
                   You have two ways to bring your bookmarks into MarkFlow:
@@ -1171,9 +1243,9 @@ export default function App() {
                 </ul>
               </section>
 
-              <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <Sparkles className="text-indigo-600" /> 4. What does AI Deep Clean do?
+              <section className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                  <Sparkles className="text-indigo-600 dark:text-indigo-400" /> 4. What does AI Deep Clean do?
                 </h3>
                 <p className="mb-3">
                   When you have a lot of bookmarks in the "Uncategorized" folder, click <strong>AI Organize</strong>.
@@ -1464,12 +1536,12 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate }: any) {
+function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGeekMode }: any) {
   const [imgError, setImgError] = useState(false);
   
   // Use Google's high-res favicon service for a fast, reliable image that doesn't require scraping
   const domain = new URL(bookmark.url).hostname;
-  const imgSrc = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+  const imgSrc = bookmark.customIconUrl || `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
 
   return (
     <motion.div 
@@ -1485,6 +1557,7 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate }: an
             alt={bookmark.title} 
             className="w-16 h-16 object-contain drop-shadow-md" 
             onError={() => setImgError(true)} 
+            referrerPolicy="no-referrer"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-slate-100 flex items-center justify-center">
@@ -1496,8 +1569,14 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate }: an
         </div>
       </div>
       <div className="p-4 flex-1 flex flex-col">
+        <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-2 font-medium">
+          <Folder size={10} />
+          <span>Bookmarks</span>
+          <ChevronRight size={10} />
+          <span className="text-slate-500 truncate">{bookmark.folder || 'Uncategorized'}</span>
+        </div>
         <div className="flex items-start gap-2 mb-1">
-          <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} alt="" className="w-4 h-4 mt-0.5 shrink-0" onError={(e) => e.currentTarget.style.display = 'none'} />
+          <img src={bookmark.customIconUrl || `https://www.google.com/s2/favicons?domain=${domain}&sz=32`} alt="" className="w-4 h-4 mt-0.5 shrink-0" onError={(e) => e.currentTarget.style.display = 'none'} referrerPolicy="no-referrer" />
           <h3 className="text-sm font-medium text-slate-900 line-clamp-2 leading-tight" title={bookmark.title}>{bookmark.title}</h3>
         </div>
         <p className="text-[10px] text-slate-400 font-mono truncate mb-2">{bookmark.url}</p>
@@ -1508,11 +1587,14 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate }: an
         
         <div className="mt-auto pt-3 flex items-center justify-between">
           <span className="text-[10px] font-medium text-slate-500 flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
-            <Folder size={10} />
-            <span className="truncate max-w-[80px]">{bookmark.folder}</span>
+            <Clock size={10} />
+            <span className="truncate max-w-[80px]">{bookmark.dateAdded ? new Date(bookmark.dateAdded).toLocaleDateString() : 'Unknown'}</span>
           </span>
           
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={onGeekMode} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Geek Mode (Metadata)">
+              <Terminal size={14} />
+            </button>
             <button onClick={() => {
               const updated = { ...bookmark, readLater: bookmark.readLater ? 0 : 1 };
               onUpdate(updated);
