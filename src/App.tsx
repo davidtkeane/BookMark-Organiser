@@ -5,7 +5,7 @@ import {
   MoreVertical, CheckCircle2, XCircle, Loader2, Info, Download, UploadCloud, ListTodo,
   Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
   Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database,
-  RefreshCw, Clock
+  RefreshCw, Clock, HelpCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
@@ -24,7 +24,24 @@ export default function App() {
   const [showChecksModal, setShowChecksModal] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0, status: '' });
   const [showOrganizeModal, setShowOrganizeModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  const getTimestamp = () => {
+    const now = new Date();
+    return now.toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
+  };
+
+  const checkDuplicateFile = (file: File) => {
+    const fingerprint = `${file.name}-${file.size}-${file.lastModified}`;
+    const imported = JSON.parse(localStorage.getItem('imported_files') || '[]');
+    if (imported.includes(fingerprint)) {
+      return !window.confirm(`The file "${file.name}" has already been imported into MarkFlow previously.\n\nAre you sure you want to import it again?`);
+    }
+    imported.push(fingerprint);
+    localStorage.setItem('imported_files', JSON.stringify(imported));
+    return false;
+  };
   const [isLoading, setIsLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark' | 'matrix'>(() => {
     return (localStorage.getItem('theme') as any) || 'light';
@@ -80,6 +97,9 @@ export default function App() {
   };
 
   const handleMagicSync = async () => {
+    if (!window.confirm("Tip: It's highly recommended to backup your current data before a big sync!\n\nDo you want to proceed with Magic Sync?")) {
+      return;
+    }
     setIsSyncing(true);
     try {
       const browsersToSync = Object.keys(localBrowsers).filter(b => localBrowsers[b]);
@@ -143,7 +163,7 @@ export default function App() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", "markflow-backup.json");
+      downloadAnchorNode.setAttribute("download", `markflow-full-backup-${getTimestamp()}.json`);
       document.body.appendChild(downloadAnchorNode);
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
@@ -155,6 +175,10 @@ export default function App() {
   const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (checkDuplicateFile(file)) {
+      if (restoreInputRef.current) restoreInputRef.current.value = '';
+      return;
+    }
     setIsLoading(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -176,6 +200,11 @@ export default function App() {
   const handleBrowserRestore = (e: React.ChangeEvent<HTMLInputElement>, selectedSource: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (checkDuplicateFile(file)) {
+      // Need to clear the input, but we don't have a direct ref to the dynamic input here easily,
+      // so we just return. The user can refresh if they want to re-select the exact same file.
+      return;
+    }
     setIsLoading(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -206,7 +235,7 @@ export default function App() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sourceBms, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `markflow-${source}-backup.json`);
+    downloadAnchorNode.setAttribute("download", `markflow-${source}-export-${getTimestamp()}.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -216,6 +245,10 @@ export default function App() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (checkDuplicateFile(file)) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     setIsLoading(true);
     
     const reader = new FileReader();
@@ -440,6 +473,9 @@ export default function App() {
   };
 
   const handleAIOrganize = async (strategy: string = 'topic') => {
+    if (!window.confirm("Tip: AI Deep Clean will modify your folders. Have you backed up your data?\n\nClick OK to proceed.")) {
+      return;
+    }
     setShowOrganizeModal(false);
     setIsOrganizing(true);
     try {
@@ -552,7 +588,7 @@ export default function App() {
     const dataStr = "data:text/html;charset=utf-8," + encodeURIComponent(html);
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "markflow-bookmarks.html");
+    downloadAnchorNode.setAttribute("download", `markflow-bookmarks-${getTimestamp()}.html`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -652,6 +688,10 @@ export default function App() {
           <button onClick={() => setShowDataModal(true)} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
             <Database size={16} />
             <span>Data & Backups</span>
+          </button>
+          <button onClick={() => setShowHelpModal(true)} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
+            <HelpCircle size={16} />
+            <span>Help & Wiki</span>
           </button>
           <button onClick={() => setShowSettings(true)} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
             <Settings size={16} />
@@ -995,7 +1035,7 @@ export default function App() {
                 items={[
                   { text: "SQLite Database Persistence (Save everything permanently)", done: true },
                   { text: "Universal HTML Import (Drag-and-drop fallback for web/exported files)", done: true },
-                  { text: "Multi-Browser Auto-Importer (Node.js script to read Chrome, Brave, Firefox, Safari files directly on Mac)", done: false },
+                  { text: "Magic Sync (Multi-Browser Auto-Importer for Chrome, Brave, Firefox, Safari)", done: true },
                 ]}
               />
               <RoadmapSection 
@@ -1003,7 +1043,7 @@ export default function App() {
                 status="active"
                 items={[
                   { text: "Advanced Full-Text Search (Fuzzy search, tag search, content search)", done: true },
-                  { text: "AI Auto-Categorization (Sort years of mess into clean folders)", done: true },
+                  { text: "AI Deep Clean (Sort by Topic, Action/Intent, or Era)", done: true },
                   { text: "AI Smart Tags & Summaries (Gemini generates tags and 1-sentence summaries)", done: true },
                 ]}
               />
@@ -1011,7 +1051,7 @@ export default function App() {
                 title="Phase 3: Health & Maintenance (Cleaning)" 
                 status="active"
                 items={[
-                  { text: "Dead Link Checker (Ping URLs in the background)", done: true },
+                  { text: "Dead Link Checker (Batch ping URLs in the background)", done: true },
                   { text: "Advanced Deduplication (Merge exact and fuzzy matches)", done: true },
                   { text: "Wayback Machine Resurrect (Fix dead links automatically)", done: true },
                 ]}
@@ -1020,10 +1060,104 @@ export default function App() {
                 title="Phase 4: The Ultimate UI (Visuals)" 
                 status="active"
                 items={[
-                  { text: "Visual Grid View (Fetch OpenGraph/Twitter card images)", done: true },
-                  { text: "Read-It-Later Mode & Shareable Collections", done: true },
+                  { text: "Visual Grid View (High-Res Google Favicons for 10k+ performance)", done: true },
+                  { text: "Time Machine View (Sort chronologically by original creation date)", done: true },
+                  { text: "Pagination & Theming (Dark Mode, Matrix Theme, 100 items/page)", done: true },
                 ]}
               />
+              <RoadmapSection 
+                title="Phase 5: The Next Level (Future)" 
+                status="active"
+                items={[
+                  { text: "Cross-Platform Magic Sync (Windows & Linux support)", done: false },
+                  { text: "Browser Extension (Save directly to MarkFlow from your browser)", done: false },
+                  { text: "Collaborative Folders (Share curated lists with friends/team)", done: false },
+                  { text: "Full-Text Page Archival (Save the actual HTML content of the page for offline viewing)", done: false },
+                ]}
+              />
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Help & Wiki Modal */}
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#FAFAFA] rounded-2xl p-8 max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
+              <h2 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                <HelpCircle className="text-indigo-600 w-8 h-8" />
+                Help & Wiki
+              </h2>
+              <button onClick={() => setShowHelpModal(false)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-full transition-colors">
+                <XCircle size={28} />
+              </button>
+            </div>
+            
+            <div className="space-y-8 text-lg leading-relaxed text-slate-800 font-sans">
+              
+              <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <Database className="text-emerald-600" /> 1. Where is my data saved?
+                </h3>
+                <p className="mb-3">
+                  Everything you do in MarkFlow is saved <strong>locally on your computer</strong>. 
+                </p>
+                <p>
+                  We use a hidden file called a database. Nothing is sent to the cloud, except when you ask the AI to organize your folders. This means your data is private and secure.
+                </p>
+              </section>
+
+              <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <DownloadCloud className="text-blue-600" /> 2. Why and how should I backup?
+                </h3>
+                <p className="mb-3">
+                  Because your data lives only on your computer, if you delete it by mistake, it is gone!
+                </p>
+                <ul className="list-disc pl-6 space-y-2 mb-3">
+                  <li>Click the <strong>Data & Backups</strong> button in the sidebar.</li>
+                  <li>Click <strong>Backup Entire Database</strong>.</li>
+                  <li>Save this file to a safe folder, like a "Backups" folder on your Desktop.</li>
+                </ul>
+                <p className="text-slate-600 italic">
+                  Tip: The app automatically adds the date and time to the file name, so your backups will never overwrite each other!
+                </p>
+              </section>
+
+              <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <RefreshCw className="text-purple-600" /> 3. Magic Sync vs. Single Import
+                </h3>
+                <p className="mb-3">
+                  You have two ways to bring your bookmarks into MarkFlow:
+                </p>
+                <ul className="list-disc pl-6 space-y-4">
+                  <li>
+                    <strong>Magic Sync:</strong> This button pulls bookmarks from <em>all</em> your installed browsers (Chrome, Safari, Firefox, Brave) at the exact same time. It is fast and easy.
+                  </li>
+                  <li>
+                    <strong>Single Import:</strong> Look under "Local Browsers" in the sidebar. You can click just Chrome, or just Safari. This gives you full control if you only want to work on one browser at a time.
+                  </li>
+                </ul>
+              </section>
+
+              <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <Sparkles className="text-indigo-600" /> 4. What does AI Deep Clean do?
+                </h3>
+                <p className="mb-3">
+                  When you have a lot of bookmarks in the "Uncategorized" folder, click <strong>AI Organize</strong>.
+                </p>
+                <p>
+                  The AI will read the titles and sort them into neat folders for you. Always remember to <strong>backup your data first</strong> before running a big AI Deep Clean, just in case you want to undo it!
+                </p>
+              </section>
+
             </div>
           </motion.div>
         </div>
