@@ -43,7 +43,7 @@ MarkFlow is a lightning-fast, local-first bookmark manager that uses AI to organ
 3. Set up your environment variables:
    Create a `.env` file in the root directory and add your Gemini API key:
    ```env
-   GEMINI_API_KEY=your_api_key_here
+   VITE_GEMINI_API_KEY=your_api_key_here
    ```
 
 4. Start the development server:

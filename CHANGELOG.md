@@ -5,6 +5,18 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-03-02
+
+### Changed
+- **Vite Environment Standardization**: Switched to standard Vite environment variable conventions.
+    - Renamed `GEMINI_API_KEY` to `VITE_GEMINI_API_KEY` in `.env`, `README.md`, and all documentation.
+    - Replaced `process.env` access with `import.meta.env.VITE_GEMINI_API_KEY` for client-side API calls.
+    - Simplified `vite.config.ts` by removing manual `define` mappings.
+
+### Fixed
+- **AI Chat SDK Compatibility**: Updated the `handleChat` function to support the response structure of the latest `@google/genai` (v1.43.0) SDK. Fixed a crash where the assistant couldn't read model text or process tool calls.
+- **Enhanced Debugging**: Added `console.error` logging to AI Chat for easier diagnosis of connectivity or model errors.
+
 ## [3.0.0] - 2026-03-02
 
 ### Added

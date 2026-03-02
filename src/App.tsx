@@ -140,9 +140,9 @@ export default function App() {
   }, [xp]);
 
   const GEMINI_MODELS = [
-    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Fastest & Lowest Cost', costPer1M: 0.10 },
-    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', description: 'Most Capable & Reasoning', costPer1M: 1.25 },
-    { id: 'gemini-flash-lite-latest', name: 'Gemini Flash Lite', description: 'Ultra-lightweight', costPer1M: 0.05 },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Fastest Frontier Model', costPer1M: 0.10 },
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', description: 'Advanced Reasoning & Agents', costPer1M: 1.25 },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Stable Production Workhorse', costPer1M: 0.10 },
   ];
 
   const [selectedModel, setSelectedModel] = useState(() => {
@@ -182,7 +182,7 @@ export default function App() {
     setApiKeyStatus('checking');
     setApiKeyError(null);
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
         setApiKeyStatus('invalid');
         setApiKeyError("No API key found in environment variables. Please check your .env file.");
@@ -910,7 +910,11 @@ export default function App() {
     }).catch(console.error);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: (process.env.GEMINI_API_KEY as string) });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("VITE_GEMINI_API_KEY is not defined in your .env file.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       const tools = [{
         functionDeclarations: [
@@ -964,53 +968,63 @@ export default function App() {
       // Update stats
       updateAIStats(response.usageMetadata);
 
-      let aiResponseText = response.text || "";
-      const functionCalls = response.functionCalls;
+      let aiResponseText = "";
+      
+      // Safely extract text
+      if (response.candidates && response.candidates[0]?.content?.parts) {
+        aiResponseText = response.candidates[0].content.parts.find(p => p.text)?.text || "";
+        
+        const functionCalls = response.candidates[0].content.parts.filter(p => p.functionCall).map(p => p.functionCall);
 
-      if (functionCalls) {
-        for (const call of functionCalls) {
-          if (call.name === 'search_bookmarks') {
-            const query = call.args.query as string;
-            const results = bookmarks.filter(b => 
-              b.title.toLowerCase().includes(query.toLowerCase()) || 
-              b.url.toLowerCase().includes(query.toLowerCase()) ||
-              (b.folder && b.folder.toLowerCase().includes(query.toLowerCase()))
-            ).slice(0, 10);
-            
-            const toolResponse = await ai.models.generateContent({
-              model: selectedModel,
-              contents: [
-                { role: 'user', parts: [{ text: message }] },
-                { role: 'model', parts: [{ text: aiResponseText || "Searching..." }] },
-                { role: 'user', parts: [{ text: `Search results for "${query}": ${JSON.stringify(results)}` }] }
-              ]
-            });
-            updateAIStats(toolResponse.usageMetadata);
-            aiResponseText = toolResponse.text || "I found some bookmarks for you.";
-          } else if (call.name === 'delete_bookmark') {
-            const id = call.args.id as string;
-            const b = bookmarks.find(x => x.id === id);
-            if (b) {
-              await fetch(`/api/bookmarks/${id}`, { method: 'DELETE' });
-              setBookmarks(prev => prev.filter(x => x.id !== id));
-              aiResponseText = `I've deleted the bookmark: "${b.title}".`;
-            }
-          } else if (call.name === 'move_bookmark') {
-            const id = call.args.id as string;
-            const folder = call.args.folder as string;
-            const b = bookmarks.find(x => x.id === id);
-            if (b) {
-              const updated = { ...b, folder };
-              await fetch('/api/bookmarks/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookmarks: [updated] })
+        if (functionCalls.length > 0) {
+          for (const call of functionCalls) {
+            if (call.name === 'search_bookmarks') {
+              const query = (call.args as any).query as string;
+              const results = bookmarks.filter(b => 
+                b.title.toLowerCase().includes(query.toLowerCase()) || 
+                b.url.toLowerCase().includes(query.toLowerCase()) ||
+                (b.folder && b.folder.toLowerCase().includes(query.toLowerCase()))
+              ).slice(0, 10);
+              
+              const toolResponse = await ai.models.generateContent({
+                model: selectedModel,
+                contents: [
+                  { role: 'user', parts: [{ text: message }] },
+                  { role: 'model', parts: [{ text: aiResponseText || "Searching..." }] },
+                  { role: 'user', parts: [{ text: `Search results for "${query}": ${JSON.stringify(results)}` }] }
+                ]
               });
-              setBookmarks(prev => prev.map(x => x.id === id ? updated : x));
-              aiResponseText = `I've moved "${b.title}" to the "${folder}" folder.`;
+              updateAIStats(toolResponse.usageMetadata);
+              aiResponseText = toolResponse.candidates?.[0]?.content?.parts?.find(p => p.text)?.text || "I found some bookmarks for you.";
+            } else if (call.name === 'delete_bookmark') {
+              const id = (call.args as any).id as string;
+              const b = bookmarks.find(x => x.id === id);
+              if (b) {
+                await fetch(`/api/bookmarks/${id}`, { method: 'DELETE' });
+                setBookmarks(prev => prev.filter(x => x.id !== id));
+                aiResponseText = `I've deleted the bookmark: "${b.title}".`;
+              }
+            } else if (call.name === 'move_bookmark') {
+              const id = (call.args as any).id as string;
+              const folder = (call.args as any).folder as string;
+              const b = bookmarks.find(x => x.id === id);
+              if (b) {
+                const updated = { ...b, folder };
+                await fetch('/api/bookmarks/batch', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ bookmarks: [updated] })
+                });
+                setBookmarks(prev => prev.map(x => x.id === id ? updated : x));
+                aiResponseText = `I've moved "${b.title}" to the "${folder}" folder.`;
+              }
             }
           }
         }
+      }
+
+      if (!aiResponseText) {
+        aiResponseText = "I'm sorry, I couldn't generate a response. Please try again.";
       }
 
       const modelMsg = { role: 'model', content: aiResponseText };
@@ -1024,7 +1038,7 @@ export default function App() {
       }).catch(console.error);
 
     } catch (error) {
-      console.error(error);
+      console.error("AI Chat Error:", error);
       const errorMsg = { role: 'model', content: "Sorry, I encountered an error while processing your request." };
       setChatMessages(prev => [...prev, errorMsg]);
       fetch('/api/chat', {
@@ -1083,11 +1097,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md overflow-hidden ${theme === 'ranger' ? 'bg-[#1a1c1e] border border-[#8a9099]' : theme === 'matrix' ? 'bg-black border border-emerald-500/50' : 'bg-indigo-600'}`}>
               {theme === 'ranger' ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2C7.58 2 4 5.58 4 10V14C4 18.42 7.58 22 12 22C16.42 22 20 18.42 20 14V10C20 5.58 16.42 2 12 2Z" fill="#8a9099"/>
-                  <path d="M5 11H19V13C19 13 17 14.5 12 14.5C7 14.5 5 13 5 13V11Z" fill="#1a1c1e"/>
-                  <path d="M11 14.5V22H13V14.5H11Z" fill="#1a1c1e"/>
-                </svg>
+                <img src="/ranger.png" alt="Ranger Logo" className="w-full h-full object-cover" />
               ) : theme === 'matrix' && customMatrixLogo ? (
                 <img src={customMatrixLogo} alt="Matrix Logo" className="w-full h-full object-contain filter grayscale sepia hue-rotate-[70deg] saturate-[500%] brightness-[0.8]" />
               ) : theme === 'matrix' ? (
@@ -2208,7 +2218,7 @@ export default function App() {
                   <li>Go to the <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline">Google AI Studio API Key page</a>.</li>
                   <li>Sign in with your Google account.</li>
                   <li>Click <strong>Create API key</strong>.</li>
-                  <li>Copy the key and paste it into your <code>.env</code> file as <code>GEMINI_API_KEY=your_key_here</code>.</li>
+                  <li>Copy the key and paste it into your <code>.env</code> file as <code>VITE_GEMINI_API_KEY=your_key_here</code>.</li>
                 </ol>
                 <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg mb-4">
                   <p className="text-sm text-amber-800 font-medium flex items-center gap-2">
@@ -2233,7 +2243,7 @@ export default function App() {
                 <ul className="list-disc pl-6 space-y-2 mb-4">
                   <li><strong>Check your Key:</strong> Ensure you are using a key from <strong>Google AI Studio</strong> (not a standard Google Cloud API key unless you've enabled the "Generative Language API").</li>
                   <li><strong>Browser Extensions:</strong> Some ad-blockers or privacy extensions might block the connection to Google's AI servers. Try disabling them for this site.</li>
-                  <li><strong>Environment Variables:</strong> If you are running MarkFlow locally, ensure the <code>GEMINI_API_KEY</code> is correctly set in your <code>.env</code> file and you have restarted the server.</li>
+                  <li><strong>Environment Variables:</strong> If you are running MarkFlow locally, ensure the <code>VITE_GEMINI_API_KEY</code> is correctly set in your <code>.env</code> file and you have restarted the server.</li>
                 </ul>
               </section>
 
@@ -2729,11 +2739,7 @@ export default function App() {
                   </button>
                   <button onClick={() => setTheme('ranger')} className={`p-4 rounded-xl border transition-all ${theme === 'ranger' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
                     <div className="flex justify-center mb-2">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2C7.58 2 4 5.58 4 10V14C4 18.42 7.58 22 12 22C16.42 22 20 18.42 20 14V10C20 5.58 16.42 2 12 2Z" fill="#8a9099"/>
-                        <path d="M5 11H19V13C19 13 17 14.5 12 14.5C7 14.5 5 13 5 13V11Z" fill="#1a1c1e"/>
-                        <path d="M11 14.5V22H13V14.5H11Z" fill="#1a1c1e"/>
-                      </svg>
+                      <img src="/ranger.png" alt="Ranger Logo" className="w-8 h-8 object-cover rounded-lg" />
                     </div>
                     <div className="text-xs font-medium text-center">Ranger</div>
                   </button>
@@ -2747,7 +2753,7 @@ export default function App() {
                   <p className="text-slate-500"># Local Setup Guide (MacBook M3 Pro)</p>
                   <p>cd path/to/your/project</p>
                   <p>npm install</p>
-                  <p>echo 'GEMINI_API_KEY="..."' {'>'} .env</p>
+                  <p>echo 'VITE_GEMINI_API_KEY="..."' {'>'} .env</p>
                   <p>npm run dev</p>
                 </div>
               </section>
