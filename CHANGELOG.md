@@ -5,6 +5,12 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2026-03-02
+
+### Added
+- **Visual "Bento" Grid View:** Implemented a modern, asymmetrical grid layout for bookmarks with varied card sizes and enhanced styling.
+- **AI-Powered Semantic Search:** Added a new search mode that uses Gemini to find bookmarks based on meaning and intent rather than just keywords.
+
 ## [2.10.0] - 2026-03-02
 
 ### Added

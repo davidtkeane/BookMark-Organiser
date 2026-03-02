@@ -7,10 +7,10 @@ import {
   Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database,
   RefreshCw, Clock, HelpCircle, Terminal, MessageSquare, Send, Ghost, Eye,
   Coffee, Fingerprint, Dna, Trophy, Zap, Medal, Gift, Star,
-  ShieldCheck, AlertCircle
+  ShieldCheck, AlertCircle, Brain
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
+import { categorizeBookmarksWithAI, enrichBookmarksWithAI, semanticSearchBookmarks } from './services/gemini';
 import { GoogleGenAI, Type } from "@google/genai";
 
 export default function App() {
@@ -42,6 +42,8 @@ export default function App() {
   const [coffeeBookmarks, setCoffeeBookmarks] = useState<any[]>([]);
   const [isBrewing, setIsBrewing] = useState(false);
   const [isDetectingDNA, setIsDetectingDNA] = useState(false);
+  const [isSemanticSearching, setIsSemanticSearching] = useState(false);
+  const [semanticSearchIds, setSemanticSearchIds] = useState<string[] | null>(null);
   
   // Gamification State
   const [xp, setXp] = useState(0);
@@ -528,6 +530,13 @@ export default function App() {
   const readLaterCount = bookmarks.filter(b => b.readLater).length;
 
   const filteredBookmarks = useMemo(() => {
+    if (semanticSearchIds !== null) {
+      // Return bookmarks in the order specified by semantic search results
+      return semanticSearchIds
+        .map(id => bookmarks.find(b => b.id === id))
+        .filter(Boolean);
+    }
+
     let filtered = bookmarks;
     if (activeTab === 'duplicates') filtered = filtered.filter(b => b.status === 'duplicate');
     if (activeTab === 'dead') filtered = filtered.filter(b => b.status === 'dead');
@@ -568,9 +577,13 @@ export default function App() {
   }, [bookmarks, activeTab, searchQuery]);
 
   // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchQuery, viewMode]);
+    useEffect(() => {
+      setCurrentPage(1);
+      // Clear semantic search results when tab or query changes manually
+      if (activeTab !== 'all' || !searchQuery) {
+        setSemanticSearchIds(null);
+      }
+    }, [activeTab, searchQuery, viewMode]);
 
   const paginatedBookmarks = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -810,6 +823,20 @@ export default function App() {
       alert("Error enriching bookmarks: " + error.message);
     }
     setIsEnriching(false);
+  };
+
+  const handleSemanticSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSemanticSearching(true);
+    try {
+      const results = await semanticSearchBookmarks(searchQuery, bookmarks, selectedModel);
+      setSemanticSearchIds(results);
+      awardXp(20);
+    } catch (error: any) {
+      console.error("Semantic search failed", error);
+      alert("Semantic search failed. Please check your API key.");
+    }
+    setIsSemanticSearching(false);
   };
 
   const handleResurrect = async (bookmark: any) => {
@@ -1197,20 +1224,30 @@ export default function App() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <button 
-              onClick={() => {
-                if (searchQuery) {
-                  setShowChat(true);
-                  handleChat(`Search my library and the web for more information about: ${searchQuery}`);
-                } else {
-                  setShowChat(true);
-                }
-              }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-              title="AI Search & Research"
-            >
-              <Sparkles size={18} />
-            </button>
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <button 
+                onClick={handleSemanticSearch}
+                disabled={isSemanticSearching || !searchQuery}
+                className={`p-1.5 rounded-lg transition-colors ${isSemanticSearching ? 'text-indigo-600 bg-indigo-50 animate-pulse' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'} disabled:opacity-30`}
+                title="AI Semantic Search (Find by Meaning)"
+              >
+                {isSemanticSearching ? <Loader2 size={18} className="animate-spin" /> : <Brain size={18} />}
+              </button>
+              <button 
+                onClick={() => {
+                  if (searchQuery) {
+                    setShowChat(true);
+                    handleChat(`Search my library and the web for more information about: ${searchQuery}`);
+                  } else {
+                    setShowChat(true);
+                  }
+                }}
+                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                title="AI Search & Research"
+              >
+                <Sparkles size={18} />
+              </button>
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -1425,7 +1462,7 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-slate-50/50">
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-slate-50/50 grid-flow-dense">
                 {paginatedBookmarks.map((bookmark, idx) => (
                   <BookmarkGridCard 
                     key={bookmark.id} 
@@ -2960,92 +2997,125 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
   
   // Use Google's high-res favicon service for a fast, reliable image that doesn't require scraping
   const domain = new URL(bookmark.url).hostname;
-  const imgSrc = bookmark.customIconUrl || `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+  const imgSrc = bookmark.customIconUrl || `https://www.google.com/s2/favicons?domain=${domain}&sz=256`;
+
+  // Bento sizing logic
+  const hasLongSummary = bookmark.summary && bookmark.summary.length > 100;
+  const hasManyTags = bookmark.tags && bookmark.tags.length > 2;
+  const isLarge = hasLongSummary || (idx % 7 === 0); // Every 7th or long summary
+  const isWide = hasManyTags || (idx % 11 === 0); // Every 11th or many tags
 
   return (
     <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: Math.min(idx * 0.02, 0.2) }}
-      className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col h-72"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(idx * 0.02, 0.3) }}
+      className={`bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col 
+        ${isLarge ? 'row-span-2 h-[32rem]' : 'h-80'} 
+        ${isWide ? 'sm:col-span-2' : ''}`}
     >
-      <div className="h-32 bg-slate-100 relative overflow-hidden flex items-center justify-center shrink-0 border-b border-slate-100">
+      <div className={`relative overflow-hidden flex items-center justify-center shrink-0 border-b border-slate-100 bg-slate-50
+        ${isLarge ? 'h-64' : 'h-36'}`}
+      >
         {!imgError ? (
           <img 
             src={imgSrc} 
             alt={bookmark.title} 
-            className="w-16 h-16 object-contain drop-shadow-md" 
+            className={`${isLarge ? 'w-32 h-32' : 'w-16 h-16'} object-contain drop-shadow-2xl group-hover:scale-110 transition-transform duration-500`} 
             onError={() => setImgError(true)} 
             referrerPolicy="no-referrer"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-slate-100 flex items-center justify-center">
-            <ImageIcon size={32} className="text-indigo-200" />
+            <ImageIcon size={isLarge ? 64 : 32} className="text-indigo-200" />
           </div>
         )}
-        <div className="absolute top-2 right-2">
+        
+        <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
           <StatusBadge status={bookmark.status} />
+          {bookmark.readLater && (
+            <div className="bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
+              <BookOpen size={12} />
+            </div>
+          )}
         </div>
+
+        {/* Gradient Overlay for large cards */}
+        {isLarge && (
+          <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent pointer-events-none" />
+        )}
       </div>
-      <div className="p-4 flex-1 flex flex-col">
-        <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-2 font-medium">
-          <Folder size={10} />
-          <span>Bookmarks</span>
-          <ChevronRight size={10} />
-          <span className="text-slate-500 truncate">{bookmark.folder || 'Uncategorized'}</span>
+
+      <div className="p-6 flex-1 flex flex-col">
+        <div className="flex items-center gap-2 text-[10px] text-slate-400 mb-3 font-bold uppercase tracking-widest">
+          <Folder size={10} className="text-indigo-400" />
+          <span className="truncate">{bookmark.folder || 'Uncategorized'}</span>
         </div>
-        <div className="flex items-start gap-2 mb-1">
-          <img src={bookmark.customIconUrl || `https://www.google.com/s2/favicons?domain=${domain}&sz=32`} alt="" className="w-4 h-4 mt-0.5 shrink-0" onError={(e) => e.currentTarget.style.display = 'none'} referrerPolicy="no-referrer" />
-          <h3 className="text-sm font-medium text-slate-900 line-clamp-2 leading-tight" title={bookmark.title}>{bookmark.title}</h3>
+
+        <div className="flex items-start gap-3 mb-2">
+          <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+            <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} alt="" className="w-3.5 h-3.5" onError={(e) => e.currentTarget.style.display = 'none'} referrerPolicy="no-referrer" />
+          </div>
+          <h3 className={`font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors
+            ${isLarge ? 'text-xl' : 'text-sm line-clamp-2'}`} title={bookmark.title}>
+            {bookmark.title}
+          </h3>
         </div>
-        <p className="text-[10px] text-slate-400 font-mono truncate mb-2">{bookmark.url}</p>
+
+        <p className="text-[10px] text-slate-400 font-mono truncate mb-4 opacity-60">{bookmark.url}</p>
         
         {bookmark.summary && (
-          <p className="text-xs text-slate-500 line-clamp-2 flex-1">{bookmark.summary}</p>
+          <p className={`text-slate-500 leading-relaxed mb-4
+            ${isLarge ? 'text-sm line-clamp-6' : 'text-xs line-clamp-2'}`}>
+            {bookmark.summary}
+          </p>
+        )}
+
+        {bookmark.tags && bookmark.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {bookmark.tags.slice(0, isLarge ? 6 : 3).map((tag: string, i: number) => (
+              <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[9px] font-bold uppercase tracking-tighter border border-slate-200">
+                {tag}
+              </span>
+            ))}
+            {bookmark.tags.length > (isLarge ? 6 : 3) && (
+              <span className="text-[9px] text-slate-400 font-bold">+{bookmark.tags.length - (isLarge ? 6 : 3)}</span>
+            )}
+          </div>
         )}
         
-        <div className="mt-auto pt-3 flex items-center justify-between">
-          <span className="text-[10px] font-medium text-slate-500 flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
-            <Clock size={10} />
-            <span className="truncate max-w-[80px]">{bookmark.dateAdded ? new Date(bookmark.dateAdded).toLocaleDateString() : 'Unknown'}</span>
-          </span>
+        <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-[10px] font-bold">
+              {bookmark.title.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-900">Added</span>
+              <span className="text-[9px] text-slate-400 font-medium">{bookmark.dateAdded ? new Date(bookmark.dateAdded).toLocaleDateString() : 'Recently'}</span>
+            </div>
+          </div>
           
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onGeekMode} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Geek Mode (Metadata)">
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+            <button onClick={onGeekMode} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Geek Mode">
               <Terminal size={14} />
             </button>
             <button 
               onClick={onArchive} 
               disabled={isArchiving}
-              className={`p-1.5 rounded-md transition-colors ${bookmark.archivedAt ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`} 
-              title={bookmark.archivedAt ? `Archived on ${new Date(bookmark.archivedAt).toLocaleDateString()}` : "Archive Locally (Ghost Copy)"}
+              className={`p-2 rounded-xl transition-colors ${bookmark.archivedAt ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`} 
             >
               {isArchiving ? <Loader2 size={14} className="animate-spin" /> : <Ghost size={14} />}
             </button>
-            {bookmark.archivedAt && (
-              <button 
-                onClick={() => window.open(`/api/archive/${bookmark.id}`, '_blank')}
-                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" 
-                title="View Local Archive"
-              >
-                <Eye size={14} />
-              </button>
-            )}
             <button onClick={() => {
               const updated = { ...bookmark, readLater: bookmark.readLater ? 0 : 1 };
               onUpdate(updated);
-            }} className={`p-1.5 rounded-md transition-colors ${bookmark.readLater ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`} title={bookmark.readLater ? "Remove from Read Later" : "Read Later"}>
+            }} className={`p-2 rounded-xl transition-colors ${bookmark.readLater ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}>
               <BookOpen size={14} />
             </button>
-            {bookmark.status === 'dead' && (
-              <button onClick={onResurrect} className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors" title="Resurrect with Wayback Machine">
-                <ArchiveRestore size={14} />
-              </button>
-            )}
-            <a href={bookmark.url} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Open Link">
+            <a href={bookmark.url} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors">
               <LinkIcon size={14} />
             </a>
-            <button onClick={onDelete} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
+            <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors">
               <Trash2 size={14} />
             </button>
           </div>

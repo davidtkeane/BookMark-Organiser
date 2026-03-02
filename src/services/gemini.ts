@@ -96,3 +96,41 @@ export async function enrichBookmarksWithAI(bookmarks: any[], model: string = "g
 
   return JSON.parse(response.text);
 }
+
+export async function semanticSearchBookmarks(query: string, bookmarks: any[], model: string = "gemini-3-flash-preview") {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API key is missing. Please add it to your .env file.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+    You are an expert search engine. Given a user's search query and a list of bookmarks, identify the most relevant bookmarks based on semantic meaning and intent, not just keyword matching.
+    
+    User Query: "${query}"
+    
+    Bookmarks to search:
+    ${JSON.stringify(bookmarks.map(b => ({ id: b.id, title: b.title, url: b.url, summary: b.summary, tags: b.tags })))}
+    
+    Return an array of IDs for the most relevant bookmarks, ordered by relevance. If no bookmarks are relevant, return an empty array.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: model,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING }
+      }
+    }
+  });
+
+  if (!response.text) {
+    throw new Error("No response from Gemini");
+  }
+
+  return JSON.parse(response.text);
+}
