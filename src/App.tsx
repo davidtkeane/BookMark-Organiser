@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { 
   Folder, FolderOpen, Link as LinkIcon, AlertTriangle, Trash2, Search, 
   Activity, Copy, Sparkles, Settings, ChevronRight, ChevronDown, 
@@ -73,10 +73,9 @@ export default function App() {
     return () => clearInterval(timer);
   }, [lastActivity, autoPromptEnabled, autoPromptDelay, showChat, showAutoPrompt]);
 
-  const resetActivity = () => {
+  const resetActivity = useCallback(() => {
     setLastActivity(Date.now());
-    if (showAutoPrompt) setShowAutoPrompt(false);
-  };
+  }, []);
 
   useEffect(() => {
     window.addEventListener('mousemove', resetActivity);
@@ -87,7 +86,7 @@ export default function App() {
       window.removeEventListener('keydown', resetActivity);
       window.removeEventListener('click', resetActivity);
     };
-  }, [showAutoPrompt]);
+  }, [resetActivity]);
 
   const awardXp = (amount: number) => {
     setXp(prev => {
@@ -1566,6 +1565,7 @@ export default function App() {
                 status="active"
                 items={[
                   { text: "Cross-Platform Magic Sync (Windows & Linux support)", done: false },
+                  { text: "iOS Standalone App (App Store Release)", done: false },
                   { text: "Browser Extension (Save directly to MarkFlow from your browser)", done: false },
                   { text: "Collaborative Folders (Share curated lists with friends/team)", done: false },
                 ]}
@@ -1609,6 +1609,10 @@ export default function App() {
                     <li className="flex items-center gap-3 text-slate-700">
                       <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
                       Build Browser Extension (Chrome/Firefox)
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-700">
+                      <div className="w-2 h-2 rounded-full bg-indigo-500 font-bold">NEW</div>
+                      iOS Standalone App (App Store Release)
                     </li>
                     <li className="flex items-center gap-3 text-slate-400 line-through">
                       <div className="w-2 h-2 rounded-full bg-slate-300"></div>
