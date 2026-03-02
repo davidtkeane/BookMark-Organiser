@@ -53,6 +53,7 @@ export default function App() {
   // Time Capsule State
   const [showTimeCapsule, setShowTimeCapsule] = useState(false);
   const [capsuleBookmark, setCapsuleBookmark] = useState<any | null>(null);
+  const [selectedBookmark, setSelectedBookmark] = useState<any | null>(null);
 
   // Smart Search & Auto-Prompt State
   const [autoPromptEnabled, setAutoPromptEnabled] = useState(() => {
@@ -548,6 +549,7 @@ export default function App() {
     }
     
     if (activeTab === 'read-later') filtered = filtered.filter(b => b.readLater);
+    if (activeTab === 'checked') filtered = filtered.filter(b => b.isChecked);
     
     // Time Machine View
     if (activeTab === 'time-machine') {
@@ -1183,6 +1185,7 @@ export default function App() {
             <SmartViewItem icon={<Gift size={16} />} label="Time Capsule" count={0} color="text-pink-500" onClick={triggerTimeCapsule} />
             <SmartViewItem icon={<Clock size={16} />} label="Time Machine" count={0} color="text-purple-500" onClick={() => setActiveTab('time-machine')} />
             <SmartViewItem icon={<BookOpen size={16} />} label="Read Later" count={readLaterCount} color="text-emerald-500" onClick={() => setActiveTab('read-later')} />
+            <SmartViewItem icon={<CheckCircle2 size={16} />} label="Checked" count={bookmarks.filter(b => b.isChecked).length} color="text-green-500" onClick={() => setActiveTab('checked')} />
             <SmartViewItem icon={<Copy size={16} />} label="Duplicates" count={duplicatesCount} color="text-amber-500" onClick={() => setActiveTab('duplicates')} />
             <SmartViewItem icon={<Activity size={16} />} label="Dead Links" count={deadLinksCount} color="text-red-500" onClick={() => setActiveTab('dead')} />
             <SmartViewItem icon={<Sparkles size={16} />} label="Uncategorized" count={uncategorizedCount} color="text-indigo-500" onClick={() => setActiveTab('uncategorized')} />
@@ -1329,6 +1332,7 @@ export default function App() {
                 </Tab>
               )}
               <Tab active={activeTab === 'read-later'} onClick={() => setActiveTab('read-later')}>Read Later</Tab>
+              <Tab active={activeTab === 'checked'} onClick={() => setActiveTab('checked')}>Checked</Tab>
               <Tab active={activeTab === 'duplicates'} onClick={() => setActiveTab('duplicates')}>Duplicates</Tab>
               <Tab active={activeTab === 'dead'} onClick={() => setActiveTab('dead')}>Dead Links</Tab>
               <Tab active={activeTab === 'uncategorized'} onClick={() => setActiveTab('uncategorized')}>Uncategorized</Tab>
@@ -1372,7 +1376,8 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(idx * 0.02, 0.5) }}
                     key={bookmark.id} 
-                    className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors group"
+                    onClick={() => setSelectedBookmark(bookmark)}
+                    className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors group cursor-pointer"
                   >
                     <div className="flex items-start gap-4 overflow-hidden w-full">
                       <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-1">
@@ -1468,6 +1473,7 @@ export default function App() {
                     key={bookmark.id} 
                     bookmark={bookmark} 
                     idx={idx}
+                    onClick={() => setSelectedBookmark(bookmark)}
                     onGeekMode={() => setGeekModeBookmark(bookmark)}
                     onArchive={() => handleArchiveLocally(bookmark)}
                     isArchiving={isArchiving === bookmark.id}
@@ -1691,7 +1697,17 @@ export default function App() {
                 ]}
               />
               <RoadmapSection 
-                title="Phase 6: The Next Level (Future)" 
+                title="Phase 6: The Ultimate Experience (Refinement)" 
+                status="active"
+                items={[
+                  { text: "Visual Bento Grid View (Dynamic asymmetrical layout)", done: true },
+                  { text: "AI-Powered Semantic Search (Find by meaning, not just keywords)", done: true },
+                  { text: "Bookmark Pop-out Detail View (Metadata & Live Preview)", done: true },
+                  { text: "Checked/Unchecked Status (Track your progress)", done: true },
+                ]}
+              />
+              <RoadmapSection 
+                title="Phase 7: The Next Level (Future)" 
                 status="active"
                 items={[
                   { text: "Cross-Platform Magic Sync (Windows & Linux support)", done: false },
@@ -1701,23 +1717,23 @@ export default function App() {
                 ]}
               />
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v2.6.0)</h4>
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v2.12.0)</h4>
                 <ul className="space-y-1">
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Added Interactive AI Search Tool in header
+                    Added Visual Bento Grid View
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Added Smart Assistant Auto-Prompt (Configurable)
+                    Added AI-Powered Semantic Search
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Added Custom Matrix Logo Upload & Processing
+                    Added Bookmark Detail Pop-out with Live Preview
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Fixed AI Stats readability in Geek Mode
+                    Added Checked/Unchecked Status tracking
                   </li>
                 </ul>
               </div>
@@ -1746,11 +1762,15 @@ export default function App() {
                     </li>
                     <li className="flex items-center gap-3 text-slate-400 line-through">
                       <div className="w-2 h-2 rounded-full bg-slate-300"></div>
-                      Interactive AI Search Tool with Auto-Prompt
+                      Visual Bento Grid View
                     </li>
                     <li className="flex items-center gap-3 text-slate-400 line-through">
                       <div className="w-2 h-2 rounded-full bg-slate-300"></div>
-                      Custom Matrix Logo Upload & Processing
+                      AI-Powered Semantic Search
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-400 line-through">
+                      <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+                      Bookmark Detail Pop-out
                     </li>
                   </ul>
                 </div>
@@ -2638,6 +2658,27 @@ export default function App() {
           handleChat(`Tell me more about this bookmark from my past: ${b.title} (${b.url})`);
         }}
       />
+
+      <BookmarkDetailModal 
+        isOpen={!!selectedBookmark}
+        onClose={() => setSelectedBookmark(null)}
+        bookmark={selectedBookmark}
+        onUpdate={(updated: any) => {
+          const newBookmarks = bookmarks.map(b => b.id === updated.id ? updated : b);
+          setBookmarks(newBookmarks);
+          fetch('/api/bookmarks/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookmarks: [updated] })
+          });
+        }}
+        onDelete={(id: string) => {
+          const newBms = bookmarks.filter(b => b.id !== id);
+          setBookmarks(newBms);
+          fetch(`/api/bookmarks/${id}`, { method: 'DELETE' });
+          setSelectedBookmark(null);
+        }}
+      />
     </div>
   );
 }
@@ -2992,7 +3033,7 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGeekMode, onArchive, isArchiving }: any) {
+function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGeekMode, onArchive, isArchiving, onClick }: any) {
   const [imgError, setImgError] = useState(false);
   
   // Use Google's high-res favicon service for a fast, reliable image that doesn't require scraping
@@ -3010,7 +3051,8 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(idx * 0.02, 0.3) }}
-      className={`bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col 
+      onClick={onClick}
+      className={`bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col cursor-pointer
         ${isLarge ? 'row-span-2 h-[32rem]' : 'h-80'} 
         ${isWide ? 'sm:col-span-2' : ''}`}
     >
@@ -3033,11 +3075,18 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
         
         <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
           <StatusBadge status={bookmark.status} />
-          {bookmark.readLater && (
-            <div className="bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
-              <BookOpen size={12} />
-            </div>
-          )}
+          <div className="flex gap-2">
+            {bookmark.readLater && (
+              <div className="bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
+                <BookOpen size={12} />
+              </div>
+            )}
+            {bookmark.isChecked && (
+              <div className="bg-green-500 text-white p-1.5 rounded-full shadow-lg">
+                <CheckCircle2 size={12} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Gradient Overlay for large cards */}
@@ -3095,7 +3144,17 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
             </div>
           </div>
           
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => {
+                const updated = { ...bookmark, isChecked: bookmark.isChecked ? 0 : 1 };
+                onUpdate(updated);
+              }} 
+              className={`p-2 rounded-xl transition-colors ${bookmark.isChecked ? 'text-green-600 bg-green-50' : 'text-slate-400 hover:text-green-600 hover:bg-green-50'}`}
+              title={bookmark.isChecked ? "Mark as Unchecked" : "Mark as Checked"}
+            >
+              <CheckCircle2 size={14} />
+            </button>
             <button onClick={onGeekMode} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Geek Mode">
               <Terminal size={14} />
             </button>
@@ -3122,5 +3181,175 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function BookmarkDetailModal({ isOpen, onClose, bookmark, onUpdate, onDelete }: any) {
+  const [healthStatus, setHealthStatus] = useState<'checking' | 'alive' | 'dead' | 'redirect' | 'idle'>('idle');
+  
+  useEffect(() => {
+    if (isOpen && bookmark) {
+      setHealthStatus('checking');
+      fetch('/api/check-health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: bookmark.url })
+      })
+      .then(res => res.json())
+      .then(data => setHealthStatus(data.status))
+      .catch(() => setHealthStatus('dead'));
+    } else {
+      setHealthStatus('idle');
+    }
+  }, [isOpen, bookmark]);
+
+  if (!isOpen || !bookmark) return null;
+
+  const domain = new URL(bookmark.url).hostname;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row h-[85vh]"
+      >
+        {/* Left Side: Preview & Visuals */}
+        <div className="w-full md:w-1/2 bg-slate-50 border-r border-slate-100 flex flex-col">
+          <div className="p-6 flex items-center justify-between border-b border-slate-100 bg-white">
+            <div className="flex items-center gap-3">
+              <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`} alt="" className="w-8 h-8 rounded-lg" />
+              <span className="text-sm font-bold text-slate-900 truncate max-w-[200px]">{domain}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {healthStatus === 'checking' ? (
+                <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+                  <Loader2 size={14} className="animate-spin" />
+                  Checking status...
+                </div>
+              ) : (
+                <StatusBadge status={healthStatus} />
+              )}
+            </div>
+          </div>
+          
+          <div className="flex-1 relative bg-slate-200 overflow-hidden">
+            {/* Iframe Preview - Note: Many sites block this via X-Frame-Options */}
+            <iframe 
+              src={bookmark.url} 
+              className="w-full h-full border-none bg-white" 
+              title="Preview"
+              sandbox="allow-scripts allow-same-origin"
+            />
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-slate-900/5 backdrop-blur-[1px]">
+              <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-white/20 flex items-center gap-2">
+                <Info size={14} className="text-indigo-600" />
+                <span className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Live Preview Mode</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-between">
+            <p className="text-[10px] text-slate-400 font-mono truncate max-w-[300px]">{bookmark.url}</p>
+            <a href={bookmark.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all">
+              <LinkIcon size={14} />
+              Open Original
+            </a>
+          </div>
+        </div>
+
+        {/* Right Side: Metadata & Actions */}
+        <div className="w-full md:w-1/2 p-8 flex flex-col overflow-y-auto bg-white">
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
+                <Folder size={12} />
+                {bookmark.folder || 'Uncategorized'}
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 leading-tight">{bookmark.title}</h2>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+              <XCircle size={24} />
+            </button>
+          </div>
+
+          <div className="space-y-6 flex-1">
+            {/* Summary Section */}
+            <div>
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <Sparkles size={12} className="text-indigo-400" />
+                AI Summary
+              </h4>
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                <p className="text-sm text-slate-600 leading-relaxed italic">
+                  {bookmark.summary || "No summary available. Use 'AI Enrich' to generate one."}
+                </p>
+              </div>
+            </div>
+
+            {/* Tags Section */}
+            <div>
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tags & Keywords</h4>
+              <div className="flex flex-wrap gap-2">
+                {bookmark.tags && bookmark.tags.length > 0 ? (
+                  bookmark.tags.map((tag: string, i: number) => (
+                    <span key={i} className="px-3 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full text-xs font-bold">
+                      {tag}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400 italic">No tags assigned</span>
+                )}
+              </div>
+            </div>
+
+            {/* Metadata Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Date Added</span>
+                <span className="text-sm font-bold text-slate-900">{new Date(bookmark.dateAdded).toLocaleDateString()}</span>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Source</span>
+                <span className="text-sm font-bold text-slate-900 capitalize">{bookmark.source || 'Manual'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Footer */}
+          <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => onUpdate({ ...bookmark, isChecked: bookmark.isChecked ? 0 : 1 })}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${bookmark.isChecked ? 'bg-green-500 text-white border-green-500 shadow-lg shadow-green-100' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                >
+                  <CheckCircle2 size={16} />
+                  {bookmark.isChecked ? 'Checked' : 'Unchecked'}
+                </button>
+                <button 
+                  onClick={() => onUpdate({ ...bookmark, readLater: bookmark.readLater ? 0 : 1 })}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${bookmark.readLater ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-100' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                >
+                  <BookOpen size={16} />
+                  Read Later
+                </button>
+              </div>
+              <button 
+                onClick={() => {
+                  if (confirm("Permanently delete this bookmark?")) {
+                    onDelete(bookmark.id);
+                  }
+                }}
+                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+              >
+                <Trash2 size={20} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
   );
 }

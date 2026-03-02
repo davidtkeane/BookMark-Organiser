@@ -29,7 +29,8 @@ db.exec(`
     imageUrl TEXT,
     readLater INTEGER DEFAULT 0,
     source TEXT DEFAULT 'manual',
-    archivedAt TEXT
+    archivedAt TEXT,
+    isChecked INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS chat_history (
@@ -54,6 +55,7 @@ try { db.exec('ALTER TABLE bookmarks ADD COLUMN imageUrl TEXT;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN readLater INTEGER DEFAULT 0;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN source TEXT DEFAULT "manual";'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN archivedAt TEXT;'); } catch (e) {}
+try { db.exec('ALTER TABLE bookmarks ADD COLUMN isChecked INTEGER DEFAULT 0;'); } catch (e) {}
 try { db.exec("CREATE TABLE IF NOT EXISTS stats (key TEXT PRIMARY KEY, value TEXT);"); } catch (e) {}
 try { db.exec("INSERT OR IGNORE INTO stats (key, value) VALUES ('xp', '0');"); } catch (e) {}
 
@@ -136,10 +138,10 @@ async function startServer() {
   app.post("/api/bookmarks/batch", (req, res) => {
     const { bookmarks } = req.body;
     try {
-      const insert = db.prepare('INSERT OR REPLACE INTO bookmarks (id, title, url, status, folder, dateAdded, summary, tags, imageUrl, readLater, source, archivedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      const insert = db.prepare('INSERT OR REPLACE INTO bookmarks (id, title, url, status, folder, dateAdded, summary, tags, imageUrl, readLater, source, archivedAt, isChecked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       const insertMany = db.transaction((bms) => {
         for (const b of bms) {
-          insert.run(b.id, b.title, b.url, b.status, b.folder, b.dateAdded, b.summary || null, b.tags ? JSON.stringify(b.tags) : null, b.imageUrl !== undefined ? b.imageUrl : null, b.readLater ? 1 : 0, b.source || 'manual', b.archivedAt || null);
+          insert.run(b.id, b.title, b.url, b.status, b.folder, b.dateAdded, b.summary || null, b.tags ? JSON.stringify(b.tags) : null, b.imageUrl !== undefined ? b.imageUrl : null, b.readLater ? 1 : 0, b.source || 'manual', b.archivedAt || null, b.isChecked ? 1 : 0);
         }
       });
       insertMany(bookmarks);

@@ -5,6 +5,15 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0] - 2026-03-02
+
+### Added
+- **Bookmark Detail Pop-out**: Clicking a bookmark now opens a beautiful detailed view with full metadata.
+- **Live Web Preview**: The detail view includes an iframe preview and a real-time health check.
+- **Checked/Unchecked Status**: Track your reading progress with a toggleable status button.
+- **Checked Category**: New sidebar filter for bookmarks marked as "Checked".
+- **Bento Grid Refinement**: Improved the asymmetrical grid layout with better interaction states.
+
 ## [2.11.0] - 2026-03-02
 
 ### Added

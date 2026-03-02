@@ -4,6 +4,10 @@ MarkFlow is a lightning-fast, local-first bookmark manager that uses AI to organ
 
 ## ✨ Key Features
 
+*   **🖼️ Visual Bento Grid:** A modern, asymmetrical grid layout that dynamically sizes cards based on content.
+*   **🧠 AI Semantic Search:** Find bookmarks by meaning and intent, not just keywords, powered by Gemini.
+*   **🖼️ Bookmark Detail Pop-out:** Beautiful detail view with full metadata, live web preview, and health checks.
+*   **✅ Checked Status Tracking:** Keep track of your reading progress with a toggleable status and dedicated category.
 *   **🪄 Magic Sync:** One-click import from Chrome, Brave, Safari, and Firefox (macOS). Automatically detects installed browsers, merges bookmarks, and removes duplicates.
 *   **🧠 AI Deep Clean:** Organize your unkempt bookmarks using Google's Gemini 3.1 Flash. Sort by Topic, Action/Intent, or Era.
 *   **🤖 AI Enrichment:** Auto-generate 1-sentence summaries and relevant smart tags for your bookmarks.
