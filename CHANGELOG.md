@@ -5,6 +5,13 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-03-02
+
+### Added
+- **AI Chat Persistence:** Chat history is now saved to a local SQLite database, allowing the AI to remember past conversations and searches across sessions.
+- **API Key Instructions:** Added a detailed guide in the Help & Wiki modal on how to obtain and configure a Google Gemini API key.
+- **Chat Management:** Added a "Clear Chat History" option in the Data & Backups modal.
+
 ## [2.6.1] - 2026-03-02
 
 ### Fixed

@@ -31,6 +31,13 @@ db.exec(`
     source TEXT DEFAULT 'manual',
     archivedAt TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS chat_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT,
+    content TEXT,
+    timestamp TEXT
+  );
 `);
 
 // Safe migrations for existing databases
@@ -49,6 +56,36 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // --- API ROUTES ---
+
+  app.get("/api/chat", (req, res) => {
+    try {
+      const stmt = db.prepare('SELECT * FROM chat_history ORDER BY id ASC');
+      const rows = stmt.all();
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/chat", (req, res) => {
+    const { role, content } = req.body;
+    try {
+      const timestamp = new Date().toISOString();
+      db.prepare('INSERT INTO chat_history (role, content, timestamp) VALUES (?, ?, ?)').run(role, content, timestamp);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.post("/api/chat/clear", (req, res) => {
+    try {
+      db.prepare('DELETE FROM chat_history').run();
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
 
   app.get("/api/bookmarks", (req, res) => {
     try {

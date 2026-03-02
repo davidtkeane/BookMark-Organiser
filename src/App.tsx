@@ -196,7 +196,7 @@ export default function App() {
     localStorage.setItem('auto_backup_enabled', String(autoBackupEnabled));
   }, [autoBackupEnabled]);
 
-  // Fetch bookmarks and local browsers on mount
+  // Fetch bookmarks, chat history and local browsers on mount
   useEffect(() => {
     fetch('/api/bookmarks')
       .then(res => res.json())
@@ -208,6 +208,11 @@ export default function App() {
         console.error(err);
         setIsLoading(false);
       });
+
+    fetch('/api/chat')
+      .then(res => res.json())
+      .then(data => setChatMessages(data))
+      .catch(() => {});
 
     fetch('/api/local-browsers')
       .then(res => res.json())
@@ -796,6 +801,13 @@ export default function App() {
     setChatInput('');
     setIsChatting(true);
 
+    // Save user message to DB
+    fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userMsg)
+    }).catch(console.error);
+
     try {
       const ai = new GoogleGenAI({ apiKey: (process.env.GEMINI_API_KEY as string) });
       
@@ -841,7 +853,7 @@ export default function App() {
       const response = await ai.models.generateContent({
         model: selectedModel,
         contents: [
-          { role: 'user', parts: [{ text: `You are MarkFlow AI, a helpful assistant for managing bookmarks. The user has ${bookmarks.length} bookmarks. You can help them search, organize, and manage their library. Use the provided tools to interact with the database. If you perform an action, explain what you did. You can also chat about anything else the user wants.` }] },
+          { role: 'user', parts: [{ text: `You are MarkFlow AI, a helpful assistant for managing bookmarks. The user has ${bookmarks.length} bookmarks. You can help them search, organize, and manage their library. You have access to the full chat history which is saved in the database. Use the provided tools to interact with the database. If you perform an action, explain what you did. You can also chat about anything else the user wants.` }] },
           ...chatMessages.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
           { role: 'user', parts: [{ text: message }] }
         ],
@@ -900,10 +912,25 @@ export default function App() {
         }
       }
 
-      setChatMessages(prev => [...prev, { role: 'model', content: aiResponseText }]);
+      const modelMsg = { role: 'model', content: aiResponseText };
+      setChatMessages(prev => [...prev, modelMsg]);
+
+      // Save model response to DB
+      fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(modelMsg)
+      }).catch(console.error);
+
     } catch (error) {
       console.error(error);
-      setChatMessages(prev => [...prev, { role: 'model', content: "Sorry, I encountered an error while processing your request." }]);
+      const errorMsg = { role: 'model', content: "Sorry, I encountered an error while processing your request." };
+      setChatMessages(prev => [...prev, errorMsg]);
+      fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(errorMsg)
+      }).catch(console.error);
     }
     setIsChatting(false);
   };
@@ -1778,6 +1805,24 @@ export default function App() {
                 </p>
               </section>
 
+              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <Terminal className="text-slate-700" /> 5. How to get an AI API Key?
+                </h3>
+                <p className="mb-3">
+                  MarkFlow uses Google's Gemini AI. To use the AI features, you need a free API key:
+                </p>
+                <ol className="list-decimal pl-6 space-y-2 mb-4">
+                  <li>Go to the <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline">Google AI Studio API Key page</a>.</li>
+                  <li>Sign in with your Google account.</li>
+                  <li>Click <strong>Create API key</strong>.</li>
+                  <li>Copy the key and paste it into your <code>.env</code> file as <code>GEMINI_API_KEY=your_key_here</code>.</li>
+                </ol>
+                <p className="text-sm text-slate-500">
+                  Most developers on GitHub already have a Google account, making this the easiest way to get high-powered AI for free!
+                </p>
+              </section>
+
             </div>
           </motion.div>
         </div>
@@ -1899,20 +1944,38 @@ export default function App() {
               {/* Danger Zone */}
               <section>
                 <h3 className="text-sm font-semibold text-red-500 uppercase tracking-wider mb-4 border-b border-red-100 pb-2">Danger Zone</h3>
-                <div className="border border-red-200 rounded-xl p-4 bg-red-50 flex items-center justify-between">
-                  <div className="flex-1 pr-4">
-                    <h4 className="font-medium text-red-900 mb-1">Clear Local Database</h4>
-                    <p className="text-xs text-red-700 leading-relaxed">
-                      This will permanently delete all bookmarks, tags, and folders <strong>inside MarkFlow</strong>. <br/>
-                      <span className="italic opacity-90">(Don't worry, this will NOT delete the actual bookmarks in your Chrome/Safari browser!)</span>
-                    </p>
+                <div className="space-y-4">
+                  <div className="border border-red-200 rounded-xl p-4 bg-red-50 flex items-center justify-between">
+                    <div className="flex-1 pr-4">
+                      <h4 className="font-medium text-red-900 mb-1">Clear Chat History</h4>
+                      <p className="text-xs text-red-700 leading-relaxed">
+                        Permanently delete all AI chat messages and history.
+                      </p>
+                    </div>
+                    <button onClick={async () => {
+                      if (confirm("Clear all chat history?")) {
+                        await fetch('/api/chat/clear', { method: 'POST' });
+                        setChatMessages([]);
+                      }
+                    }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2 shrink-0">
+                      <Trash2 size={16} /> Clear Chat
+                    </button>
                   </div>
-                  <button onClick={() => {
-                    clearDatabase();
-                    setShowDataModal(false);
-                  }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2 shrink-0">
-                    <Trash2 size={16} /> Clear Database
-                  </button>
+                  <div className="border border-red-200 rounded-xl p-4 bg-red-50 flex items-center justify-between">
+                    <div className="flex-1 pr-4">
+                      <h4 className="font-medium text-red-900 mb-1">Clear Local Database</h4>
+                      <p className="text-xs text-red-700 leading-relaxed">
+                        This will permanently delete all bookmarks, tags, and folders <strong>inside MarkFlow</strong>. <br/>
+                        <span className="italic opacity-90">(Don't worry, this will NOT delete the actual bookmarks in your Chrome/Safari browser!)</span>
+                      </p>
+                    </div>
+                    <button onClick={() => {
+                      clearDatabase();
+                      setShowDataModal(false);
+                    }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2 shrink-0">
+                      <Trash2 size={16} /> Clear Database
+                    </button>
+                  </div>
                 </div>
               </section>
             </div>
