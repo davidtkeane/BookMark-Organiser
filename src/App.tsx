@@ -4,7 +4,7 @@ import {
   Activity, Copy, Sparkles, Settings, ChevronRight, ChevronDown, 
   MoreVertical, CheckCircle2, XCircle, Loader2, Info, Download, UploadCloud, ListTodo,
   Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
-  Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon
+  Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
@@ -19,11 +19,16 @@ export default function App() {
   const [isEnriching, setIsEnriching] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
+  const [showDataModal, setShowDataModal] = useState(false);
+  const [showChecksModal, setShowChecksModal] = useState(false);
+  const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0, status: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark' | 'matrix'>(() => {
     return (localStorage.getItem('theme') as any) || 'light';
   });
   const [localBrowsers, setLocalBrowsers] = useState<any>({ chrome: false, brave: false, safari: false, firefox: false });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 100;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const restoreInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,6 +123,7 @@ export default function App() {
         if (!Array.isArray(data)) throw new Error("Invalid backup format");
         await saveBookmarksToDB(data);
         alert("Backup restored successfully!");
+        setShowDataModal(false);
       } catch (err) {
         alert("Error parsing backup file.");
       }
@@ -125,6 +131,45 @@ export default function App() {
       if (restoreInputRef.current) restoreInputRef.current.value = '';
     };
     reader.readAsText(file);
+  };
+
+  const handleBrowserRestore = (e: React.ChangeEvent<HTMLInputElement>, selectedSource: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (!Array.isArray(data)) throw new Error("Invalid backup format");
+        
+        // Tag all imported bookmarks with the selected source
+        const taggedData = data.map(b => ({ ...b, source: selectedSource }));
+        await saveBookmarksToDB(taggedData);
+        
+        alert(`Successfully imported and tagged as ${selectedSource}!`);
+        setShowDataModal(false);
+      } catch (err) {
+        alert("Error parsing backup file.");
+      }
+      setIsLoading(false);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExportSource = (source: string) => {
+    const sourceBms = bookmarks.filter(b => b.source === source);
+    if (sourceBms.length === 0) {
+      alert(`No bookmarks found for ${source}`);
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sourceBms, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `markflow-${source}-backup.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
   };
 
   // HTML Parser for Universal Import
@@ -193,14 +238,23 @@ export default function App() {
 
   const duplicatesCount = bookmarks.filter(b => b.status === 'duplicate').length;
   const deadLinksCount = bookmarks.filter(b => b.status === 'dead').length;
-  const uncategorizedCount = bookmarks.filter(b => b.folder === 'Uncategorized' || b.folder === 'Imported').length;
+  const uncategorizedCount = bookmarks.filter(b => {
+    const defaultFolders = ['Uncategorized', 'Imported', 'Bookmarks Bar', 'Other Bookmarks', 'Mobile Bookmarks', 'Bookmarks Menu'];
+    return !b.folder || defaultFolders.includes(b.folder);
+  }).length;
   const readLaterCount = bookmarks.filter(b => b.readLater).length;
 
   const filteredBookmarks = useMemo(() => {
     let filtered = bookmarks;
     if (activeTab === 'duplicates') filtered = filtered.filter(b => b.status === 'duplicate');
     if (activeTab === 'dead') filtered = filtered.filter(b => b.status === 'dead');
-    if (activeTab === 'uncategorized') filtered = filtered.filter(b => b.folder === 'Uncategorized' || b.folder === 'Imported');
+    
+    // Fix uncategorized logic to include common default browser folders
+    if (activeTab === 'uncategorized') {
+      const defaultFolders = ['Uncategorized', 'Imported', 'Bookmarks Bar', 'Other Bookmarks', 'Mobile Bookmarks', 'Bookmarks Menu'];
+      filtered = filtered.filter(b => !b.folder || defaultFolders.includes(b.folder));
+    }
+    
     if (activeTab === 'read-later') filtered = filtered.filter(b => b.readLater);
     
     if (searchQuery) {
@@ -208,7 +262,7 @@ export default function App() {
       filtered = filtered.filter(b => 
         b.title.toLowerCase().includes(q) || 
         b.url.toLowerCase().includes(q) || 
-        b.folder.toLowerCase().includes(q) ||
+        (b.folder && b.folder.toLowerCase().includes(q)) ||
         (b.tags && b.tags.some((t: string) => t.toLowerCase().includes(q))) ||
         (b.summary && b.summary.toLowerCase().includes(q))
       );
@@ -216,7 +270,83 @@ export default function App() {
     return filtered;
   }, [bookmarks, activeTab, searchQuery]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, viewMode]);
+
+  const paginatedBookmarks = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredBookmarks.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredBookmarks, currentPage]);
+
+  const totalPages = Math.ceil(filteredBookmarks.length / itemsPerPage);
+
   // Actions
+  const handleRunChecks = async () => {
+    setShowChecksModal(true);
+    setCheckProgress({ current: 0, total: 100, status: 'Finding duplicates...' });
+    
+    // 1. Find Duplicates
+    const urlMap = new Map();
+    const newBookmarks = [...bookmarks];
+    let dupesFound = 0;
+    
+    newBookmarks.forEach(b => {
+      const normalized = b.url.replace(/\/$/, '').toLowerCase();
+      if (urlMap.has(normalized)) {
+        b.status = 'duplicate';
+        dupesFound++;
+        const original = newBookmarks.find(ob => ob.id === urlMap.get(normalized).id);
+        if (original) original.status = 'duplicate';
+      } else {
+        urlMap.set(normalized, b);
+      }
+    });
+    
+    setCheckProgress({ current: 33, total: 100, status: `Found ${dupesFound} duplicates. Checking link health (batch of 50)...` });
+    
+    // 2. Check Health (Batch of 50 to avoid freezing/crashing)
+    const unchecked = newBookmarks.filter(b => b.status === 'unknown' || !b.status).slice(0, 50);
+    let checkedCount = 0;
+    
+    if (unchecked.length > 0) {
+      // Process in smaller chunks of 10
+      for (let i = 0; i < unchecked.length; i += 10) {
+        const batch = unchecked.slice(i, i + 10);
+        await Promise.all(batch.map(async (b) => {
+          try {
+            const res = await fetch('/api/check-health', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: b.url })
+            });
+            const data = await res.json();
+            b.status = data.status;
+          } catch (e) {
+            b.status = 'dead';
+          }
+          checkedCount++;
+          setCheckProgress({ 
+            current: 33 + Math.floor((checkedCount / unchecked.length) * 66), 
+            total: 100, 
+            status: `Checking link ${checkedCount} of ${unchecked.length}...` 
+          });
+        }));
+      }
+    } else {
+      setCheckProgress({ current: 100, total: 100, status: 'All links checked!' });
+    }
+    
+    setCheckProgress({ current: 100, total: 100, status: 'Saving results...' });
+    setBookmarks(newBookmarks);
+    await saveBookmarksToDB(newBookmarks);
+    
+    setTimeout(() => {
+      setShowChecksModal(false);
+    }, 1500);
+  };
+
   const handleFindDuplicates = async () => {
     const urlMap = new Map();
     const newBookmarks = [...bookmarks];
@@ -460,17 +590,9 @@ export default function App() {
 
         <div className="p-4 border-t border-slate-100 space-y-1">
           <input type="file" accept=".json" className="hidden" ref={restoreInputRef} onChange={handleRestore} />
-          <button onClick={handleBackup} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
-            <DownloadCloud size={16} />
-            <span>Backup Data</span>
-          </button>
-          <button onClick={() => restoreInputRef.current?.click()} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
-            <UploadCloudIcon size={16} />
-            <span>Restore Data</span>
-          </button>
-          <button onClick={clearDatabase} className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 transition-colors w-full p-2 rounded-md hover:bg-red-50">
-            <Trash2 size={16} />
-            <span>Clear Database</span>
+          <button onClick={() => setShowDataModal(true)} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
+            <Database size={16} />
+            <span>Data & Backups</span>
           </button>
           <button onClick={() => setShowSettings(true)} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
             <Settings size={16} />
@@ -515,13 +637,9 @@ export default function App() {
                 <LayoutGrid size={16} />
               </button>
             </div>
-            <button onClick={handleFindDuplicates} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
-              <Copy size={16} className="text-slate-400" />
-              Find Duplicates
-            </button>
-            <button onClick={handleCheckHealth} disabled={isCheckingHealth} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50">
-              {isCheckingHealth ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <Activity size={16} className="text-slate-400" />}
-              Check Health
+            <button onClick={handleRunChecks} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
+              <Activity size={16} className="text-slate-400" />
+              Run System Checks
             </button>
             <div className="h-6 w-px bg-slate-200 mx-1"></div>
             <button onClick={handleExportCollection} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
@@ -568,7 +686,7 @@ export default function App() {
             
             {viewMode === 'list' ? (
               <div className="divide-y divide-slate-100">
-                {filteredBookmarks.map((bookmark, idx) => (
+                {paginatedBookmarks.map((bookmark, idx) => (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -639,7 +757,7 @@ export default function App() {
               </div>
             ) : (
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-slate-50/50">
-                {filteredBookmarks.map((bookmark, idx) => (
+                {paginatedBookmarks.map((bookmark, idx) => (
                   <BookmarkGridCard 
                     key={bookmark.id} 
                     bookmark={bookmark} 
@@ -663,6 +781,34 @@ export default function App() {
               </div>
             )}
             
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+                <span className="text-sm text-slate-500">
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredBookmarks.length)} of {filteredBookmarks.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 rounded-md bg-white border border-slate-200 text-sm font-medium text-slate-700 disabled:opacity-50 hover:bg-slate-50"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm font-medium text-slate-700 px-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button 
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 rounded-md bg-white border border-slate-200 text-sm font-medium text-slate-700 disabled:opacity-50 hover:bg-slate-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+            
             {filteredBookmarks.length === 0 && !isLoading && (
               <div className="p-12 text-center flex flex-col items-center justify-center">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
@@ -680,6 +826,41 @@ export default function App() {
 
         </main>
       </div>
+
+      {/* System Checks Modal */}
+      {showChecksModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col"
+          >
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                {checkProgress.current < 100 ? (
+                  <Loader2 size={32} className="animate-spin" />
+                ) : (
+                  <CheckCircle2 size={32} className="text-emerald-500" />
+                )}
+              </div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">
+                {checkProgress.current < 100 ? 'Running System Checks' : 'Checks Complete!'}
+              </h2>
+              <p className="text-sm text-slate-500 mb-6 h-5">{checkProgress.status}</p>
+              
+              <div className="w-full bg-slate-100 rounded-full h-2.5 mb-2 overflow-hidden">
+                <motion.div 
+                  className="bg-indigo-600 h-2.5 rounded-full" 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${checkProgress.current}%` }}
+                  transition={{ duration: 0.3 }}
+                ></motion.div>
+              </div>
+              <div className="text-xs text-slate-400 text-right">{checkProgress.current}%</div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Roadmap Modal */}
       {showRoadmap && (
@@ -735,6 +916,120 @@ export default function App() {
                   { text: "Read-It-Later Mode & Shareable Collections", done: true },
                 ]}
               />
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Data & Backups Modal */}
+      {showDataModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                  <Database size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">Data & Backups</h2>
+                  <p className="text-sm text-slate-500">Manage your database, backups, and browser exports</p>
+                </div>
+              </div>
+              <button onClick={() => setShowDataModal(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors">
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-8">
+              {/* Full Database Section */}
+              <section>
+                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Full Database</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                    <h4 className="font-medium text-slate-900 mb-1">Backup Everything</h4>
+                    <p className="text-xs text-slate-500 mb-4">Downloads a complete JSON snapshot of all bookmarks, AI summaries, tags, and folders.</p>
+                    <button onClick={handleBackup} className="w-full py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+                      <DownloadCloud size={16} /> Download Backup
+                    </button>
+                  </div>
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                    <h4 className="font-medium text-slate-900 mb-1">Restore Database</h4>
+                    <p className="text-xs text-slate-500 mb-4">Upload a previous JSON backup to restore your entire database exactly as it was.</p>
+                    <button onClick={() => restoreInputRef.current?.click()} className="w-full py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors flex items-center justify-center gap-2">
+                      <UploadCloudIcon size={16} /> Restore Backup
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Browser Specific Section */}
+              <section>
+                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Browser Specific</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col justify-between">
+                    <div>
+                      <h4 className="font-medium text-slate-900 mb-1">Export by Browser</h4>
+                      <p className="text-xs text-slate-500 mb-4">Download a JSON backup of bookmarks from a specific browser source.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <select id="exportSourceSelect" className="flex-1 bg-white border border-slate-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                        {Array.from(new Set(bookmarks.map(b => b.source).filter(Boolean))).map(source => (
+                          <option key={source as string} value={source as string}>{source as string}</option>
+                        ))}
+                      </select>
+                      <button onClick={() => {
+                        const select = document.getElementById('exportSourceSelect') as HTMLSelectElement;
+                        if (select && select.value) handleExportSource(select.value);
+                      }} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors">
+                        Export
+                      </button>
+                    </div>
+                  </div>
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col justify-between">
+                    <div>
+                      <h4 className="font-medium text-slate-900 mb-1">Import & Assign</h4>
+                      <p className="text-xs text-slate-500 mb-4">Import a JSON backup file and assign it to a specific browser source.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <select id="importSourceSelect" className="flex-1 bg-white border border-slate-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                        <option value="chrome">Chrome</option>
+                        <option value="safari">Safari</option>
+                        <option value="firefox">Firefox</option>
+                        <option value="brave">Brave</option>
+                        <option value="manual">Manual</option>
+                      </select>
+                      <input type="file" accept=".json" id="browserRestoreInput" className="hidden" onChange={(e) => {
+                        const select = document.getElementById('importSourceSelect') as HTMLSelectElement;
+                        if (select && select.value) handleBrowserRestore(e, select.value);
+                      }} />
+                      <button onClick={() => document.getElementById('browserRestoreInput')?.click()} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors">
+                        Import
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Danger Zone */}
+              <section>
+                <h3 className="text-sm font-semibold text-red-500 uppercase tracking-wider mb-4 border-b border-red-100 pb-2">Danger Zone</h3>
+                <div className="border border-red-200 rounded-xl p-4 bg-red-50 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-red-900 mb-1">Clear Entire Database</h4>
+                    <p className="text-xs text-red-700">This will permanently delete all bookmarks, tags, and folders. Make sure you have a backup!</p>
+                  </div>
+                  <button onClick={() => {
+                    clearDatabase();
+                    setShowDataModal(false);
+                  }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2 shrink-0">
+                    <Trash2 size={16} /> Clear Database
+                  </button>
+                </div>
+              </section>
             </div>
           </motion.div>
         </div>
@@ -900,29 +1195,11 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate }: any) {
-  const [imgSrc, setImgSrc] = useState(bookmark.imageUrl);
-  const [isFetchingImg, setIsFetchingImg] = useState(bookmark.imageUrl === undefined);
-
-  useEffect(() => {
-    if (bookmark.imageUrl === undefined) {
-      fetch('/api/og-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: bookmark.url })
-      })
-      .then(res => res.json())
-      .then(data => {
-        setImgSrc(data.imageUrl || null);
-        setIsFetchingImg(false);
-        onUpdate({ ...bookmark, imageUrl: data.imageUrl || null });
-      })
-      .catch(() => {
-        setImgSrc(null);
-        setIsFetchingImg(false);
-        onUpdate({ ...bookmark, imageUrl: null });
-      });
-    }
-  }, [bookmark.url, bookmark.imageUrl]);
+  const [imgError, setImgError] = useState(false);
+  
+  // Use Google's high-res favicon service for a fast, reliable image that doesn't require scraping
+  const domain = new URL(bookmark.url).hostname;
+  const imgSrc = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
 
   return (
     <motion.div 
@@ -931,12 +1208,17 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate }: an
       transition={{ delay: Math.min(idx * 0.02, 0.2) }}
       className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col h-72"
     >
-      <div className="h-32 bg-slate-100 relative overflow-hidden flex items-center justify-center shrink-0">
-        {imgSrc ? (
-          <img src={imgSrc} alt={bookmark.title} className="w-full h-full object-cover" onError={() => setImgSrc(null)} />
+      <div className="h-32 bg-slate-100 relative overflow-hidden flex items-center justify-center shrink-0 border-b border-slate-100">
+        {!imgError ? (
+          <img 
+            src={imgSrc} 
+            alt={bookmark.title} 
+            className="w-16 h-16 object-contain drop-shadow-md" 
+            onError={() => setImgError(true)} 
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-slate-100 flex items-center justify-center">
-            {isFetchingImg ? <Loader2 size={24} className="animate-spin text-indigo-300" /> : <ImageIcon size={32} className="text-indigo-200" />}
+            <ImageIcon size={32} className="text-indigo-200" />
           </div>
         )}
         <div className="absolute top-2 right-2">
@@ -945,7 +1227,7 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate }: an
       </div>
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex items-start gap-2 mb-1">
-          <img src={`https://www.google.com/s2/favicons?domain=${bookmark.url}&sz=32`} alt="" className="w-4 h-4 mt-0.5 shrink-0" onError={(e) => e.currentTarget.style.display = 'none'} />
+          <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} alt="" className="w-4 h-4 mt-0.5 shrink-0" onError={(e) => e.currentTarget.style.display = 'none'} />
           <h3 className="text-sm font-medium text-slate-900 line-clamp-2 leading-tight" title={bookmark.title}>{bookmark.title}</h3>
         </div>
         <p className="text-[10px] text-slate-400 font-mono truncate mb-2">{bookmark.url}</p>
