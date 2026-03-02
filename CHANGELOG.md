@@ -5,6 +5,13 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.0] - 2026-03-02
+
+### Added
+- **Grid Style Toggle**: Switch between "Standard" (uniform) and "Bento" (asymmetrical) grid layouts.
+- **Clickable Status Badges**: Toggle "Checked" status directly from the bookmark card by clicking the badge.
+- **Bento Grid Refinement**: Improved alignment and spacing with `auto-rows` logic.
+
 ## [2.12.0] - 2026-03-02
 
 ### Added

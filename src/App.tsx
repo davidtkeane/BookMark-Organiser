@@ -18,6 +18,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [gridStyle, setGridStyle] = useState<'bento' | 'standard'>(() => {
+    return (localStorage.getItem('grid_style') as any) || 'bento';
+  });
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const [isOrganizing, setIsOrganizing] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
@@ -1274,6 +1277,29 @@ export default function App() {
                 <LayoutGrid size={16} />
               </button>
             </div>
+
+            {viewMode === 'grid' && (
+              <div className="flex items-center bg-slate-100 rounded-lg p-1 mr-2">
+                <button 
+                  onClick={() => {
+                    setGridStyle('standard');
+                    localStorage.setItem('grid_style', 'standard');
+                  }} 
+                  className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${gridStyle === 'standard' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Standard
+                </button>
+                <button 
+                  onClick={() => {
+                    setGridStyle('bento');
+                    localStorage.setItem('grid_style', 'bento');
+                  }} 
+                  className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${gridStyle === 'bento' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Bento
+                </button>
+              </div>
+            )}
             <button onClick={handleRunChecks} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
               <Activity size={16} className="text-slate-400" />
               Run System Checks
@@ -1467,12 +1493,13 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-slate-50/50 grid-flow-dense">
+              <div className={`p-6 bg-slate-50/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 ${gridStyle === 'bento' ? 'grid-flow-dense auto-rows-[20rem]' : ''}`}>
                 {paginatedBookmarks.map((bookmark, idx) => (
                   <BookmarkGridCard 
                     key={bookmark.id} 
                     bookmark={bookmark} 
                     idx={idx}
+                    gridStyle={gridStyle}
                     onClick={() => setSelectedBookmark(bookmark)}
                     onGeekMode={() => setGeekModeBookmark(bookmark)}
                     onArchive={() => handleArchiveLocally(bookmark)}
@@ -1704,6 +1731,7 @@ export default function App() {
                   { text: "AI-Powered Semantic Search (Find by meaning, not just keywords)", done: true },
                   { text: "Bookmark Pop-out Detail View (Metadata & Live Preview)", done: true },
                   { text: "Checked/Unchecked Status (Track your progress)", done: true },
+                  { text: "Grid Style Toggle (Standard vs Bento View)", done: true },
                 ]}
               />
               <RoadmapSection 
@@ -1717,23 +1745,19 @@ export default function App() {
                 ]}
               />
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v2.12.0)</h4>
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v2.13.0)</h4>
                 <ul className="space-y-1">
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Added Visual Bento Grid View
+                    Grid Style Toggle (Standard vs Bento)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Added AI-Powered Semantic Search
+                    Clickable Status Badges (Quick Check)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Added Bookmark Detail Pop-out with Live Preview
-                  </li>
-                  <li className="text-xs text-slate-600 flex items-center gap-2">
-                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Added Checked/Unchecked Status tracking
+                    Bento Grid Layout Refinement
                   </li>
                 </ul>
               </div>
@@ -3033,7 +3057,7 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGeekMode, onArchive, isArchiving, onClick }: any) {
+function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGeekMode, onArchive, isArchiving, onClick, gridStyle }: any) {
   const [imgError, setImgError] = useState(false);
   
   // Use Google's high-res favicon service for a fast, reliable image that doesn't require scraping
@@ -3043,8 +3067,10 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
   // Bento sizing logic
   const hasLongSummary = bookmark.summary && bookmark.summary.length > 100;
   const hasManyTags = bookmark.tags && bookmark.tags.length > 2;
-  const isLarge = hasLongSummary || (idx % 7 === 0); // Every 7th or long summary
-  const isWide = hasManyTags || (idx % 11 === 0); // Every 11th or many tags
+  
+  const isBento = gridStyle === 'bento';
+  const isLarge = isBento && (hasLongSummary || (idx % 7 === 0)); // Every 7th or long summary
+  const isWide = isBento && (hasManyTags || (idx % 11 === 0)); // Every 11th or many tags
 
   return (
     <motion.div 
@@ -3053,7 +3079,7 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
       transition={{ delay: Math.min(idx * 0.02, 0.3) }}
       onClick={onClick}
       className={`bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col cursor-pointer
-        ${isLarge ? 'row-span-2 h-[32rem]' : 'h-80'} 
+        ${isBento ? (isLarge ? 'row-span-2 h-[32rem]' : 'h-80') : 'w-80 h-80'} 
         ${isWide ? 'sm:col-span-2' : ''}`}
     >
       <div className={`relative overflow-hidden flex items-center justify-center shrink-0 border-b border-slate-100 bg-slate-50
@@ -3074,16 +3100,32 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
         )}
         
         <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-          <StatusBadge status={bookmark.status} />
+          <div onClick={(e) => {
+            e.stopPropagation();
+            const updated = { ...bookmark, isChecked: bookmark.isChecked ? 0 : 1 };
+            onUpdate(updated);
+          }}>
+            {bookmark.isChecked ? (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-500 text-white text-[10px] font-bold shadow-lg cursor-pointer hover:bg-green-600 transition-colors">
+                <CheckCircle2 size={12} />
+                Checked
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-200 text-slate-600 text-[10px] font-bold shadow-sm cursor-pointer hover:bg-slate-300 transition-colors">
+                <Activity size={12} />
+                Unchecked
+              </span>
+            )}
+          </div>
+          
+          {bookmark.status !== 'alive' && bookmark.status !== 'unknown' && (
+            <StatusBadge status={bookmark.status} />
+          )}
+          
           <div className="flex gap-2">
             {bookmark.readLater && (
               <div className="bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
                 <BookOpen size={12} />
-              </div>
-            )}
-            {bookmark.isChecked && (
-              <div className="bg-green-500 text-white p-1.5 rounded-full shadow-lg">
-                <CheckCircle2 size={12} />
               </div>
             )}
           </div>
