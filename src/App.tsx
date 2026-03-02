@@ -5,10 +5,11 @@ import {
   MoreVertical, CheckCircle2, XCircle, Loader2, Info, Download, UploadCloud, ListTodo,
   Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
   Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database,
-  RefreshCw, Clock, HelpCircle, Terminal
+  RefreshCw, Clock, HelpCircle, Terminal, MessageSquare, Send, Ghost, Eye
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
+import { GoogleGenAI, Type } from "@google/genai";
 
 export default function App() {
   const [bookmarks, setBookmarks] = useState<any[]>([]);
@@ -27,6 +28,14 @@ export default function App() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [geekModeBookmark, setGeekModeBookmark] = useState<any | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatting, setIsChatting] = useState(false);
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => {
+    return localStorage.getItem('auto_backup_enabled') !== 'false';
+  });
+  const [isArchiving, setIsArchiving] = useState<string | null>(null);
 
   const getTimestamp = () => {
     const now = new Date();
@@ -58,6 +67,31 @@ export default function App() {
     document.documentElement.className = theme;
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  // Auto Backup Effect
+  useEffect(() => {
+    if (!autoBackupEnabled) return;
+    
+    const runBackup = async () => {
+      try {
+        await fetch('/api/database/auto-backup', { method: 'POST' });
+        console.log("Auto-backup successful");
+      } catch (e) {
+        console.error("Auto-backup failed", e);
+      }
+    };
+
+    // Run every hour
+    const interval = setInterval(runBackup, 60 * 60 * 1000);
+    // Also run once on load
+    runBackup();
+    
+    return () => clearInterval(interval);
+  }, [autoBackupEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('auto_backup_enabled', String(autoBackupEnabled));
+  }, [autoBackupEnabled]);
 
   // Fetch bookmarks and local browsers on mount
   useEffect(() => {
@@ -562,6 +596,142 @@ export default function App() {
     }
   };
 
+  const handleArchiveLocally = async (bookmark: any) => {
+    setIsArchiving(bookmark.id);
+    try {
+      const res = await fetch('/api/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: bookmark.id, url: bookmark.url })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const newBookmarks = bookmarks.map(b => b.id === bookmark.id ? { ...b, archivedAt: data.archivedAt } : b);
+        setBookmarks(newBookmarks);
+        alert("Successfully saved a local copy of this page!");
+      }
+    } catch (e) {
+      alert("Failed to archive page locally.");
+    }
+    setIsArchiving(null);
+  };
+
+  const handleChat = async (message: string) => {
+    if (!message.trim()) return;
+    
+    const userMsg = { role: 'user', content: message };
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    setIsChatting(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: (process.env.GEMINI_API_KEY as string) });
+      
+      const tools = [{
+        functionDeclarations: [
+          {
+            name: "search_bookmarks",
+            description: "Search for bookmarks by title, URL, folder, or tags",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                query: { type: Type.STRING, description: "The search query" }
+              },
+              required: ["query"]
+            }
+          },
+          {
+            name: "delete_bookmark",
+            description: "Delete a bookmark by its ID",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING, description: "The ID of the bookmark to delete" }
+              },
+              required: ["id"]
+            }
+          },
+          {
+            name: "move_bookmark",
+            description: "Move a bookmark to a different folder",
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING, description: "The ID of the bookmark to move" },
+                folder: { type: Type.STRING, description: "The name of the destination folder" }
+              },
+              required: ["id", "folder"]
+            }
+          }
+        ]
+      }];
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [
+          { role: 'user', parts: [{ text: `You are MarkFlow AI, a helpful assistant for managing bookmarks. The user has ${bookmarks.length} bookmarks. You can help them search, organize, and manage their library. Use the provided tools to interact with the database. If you perform an action, explain what you did.` }] },
+          ...chatMessages.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
+          { role: 'user', parts: [{ text: message }] }
+        ],
+        config: { tools }
+      });
+
+      let aiResponseText = response.text || "";
+      const functionCalls = response.functionCalls;
+
+      if (functionCalls) {
+        for (const call of functionCalls) {
+          if (call.name === 'search_bookmarks') {
+            const query = call.args.query as string;
+            const results = bookmarks.filter(b => 
+              b.title.toLowerCase().includes(query.toLowerCase()) || 
+              b.url.toLowerCase().includes(query.toLowerCase()) ||
+              (b.folder && b.folder.toLowerCase().includes(query.toLowerCase()))
+            ).slice(0, 10);
+            
+            const toolResponse = await ai.models.generateContent({
+              model: "gemini-3-flash-preview",
+              contents: [
+                { role: 'user', parts: [{ text: message }] },
+                { role: 'model', parts: [{ text: aiResponseText || "Searching..." }] },
+                { role: 'user', parts: [{ text: `Search results for "${query}": ${JSON.stringify(results)}` }] }
+              ]
+            });
+            aiResponseText = toolResponse.text || "I found some bookmarks for you.";
+          } else if (call.name === 'delete_bookmark') {
+            const id = call.args.id as string;
+            const b = bookmarks.find(x => x.id === id);
+            if (b) {
+              await fetch(`/api/bookmarks/${id}`, { method: 'DELETE' });
+              setBookmarks(prev => prev.filter(x => x.id !== id));
+              aiResponseText = `I've deleted the bookmark: "${b.title}".`;
+            }
+          } else if (call.name === 'move_bookmark') {
+            const id = call.args.id as string;
+            const folder = call.args.folder as string;
+            const b = bookmarks.find(x => x.id === id);
+            if (b) {
+              const updated = { ...b, folder };
+              await fetch('/api/bookmarks/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookmarks: [updated] })
+              });
+              setBookmarks(prev => prev.map(x => x.id === id ? updated : x));
+              aiResponseText = `I've moved "${b.title}" to the "${folder}" folder.`;
+            }
+          }
+        }
+      }
+
+      setChatMessages(prev => [...prev, { role: 'model', content: aiResponseText }]);
+    } catch (error) {
+      console.error(error);
+      setChatMessages(prev => [...prev, { role: 'model', content: "Sorry, I encountered an error while processing your request." }]);
+    }
+    setIsChatting(false);
+  };
+
   const handleExportCollection = () => {
     if (filteredBookmarks.length === 0) {
       alert("No bookmarks to export in the current view.");
@@ -685,6 +855,7 @@ export default function App() {
 
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-8 mb-3">Smart Views</h2>
           <div className="space-y-1">
+            <SmartViewItem icon={<MessageSquare size={16} />} label="AI Chat" count={0} color="text-indigo-600" onClick={() => setShowChat(true)} />
             <SmartViewItem icon={<Clock size={16} />} label="Time Machine" count={0} color="text-purple-500" onClick={() => setActiveTab('time-machine')} />
             <SmartViewItem icon={<BookOpen size={16} />} label="Read Later" count={readLaterCount} color="text-emerald-500" onClick={() => setActiveTab('read-later')} />
             <SmartViewItem icon={<Copy size={16} />} label="Duplicates" count={duplicatesCount} color="text-amber-500" onClick={() => setActiveTab('duplicates')} />
@@ -866,6 +1037,23 @@ export default function App() {
                         <button onClick={() => setGeekModeBookmark(bookmark)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Geek Mode (Metadata)">
                           <Terminal size={16} />
                         </button>
+                        <button 
+                          onClick={() => handleArchiveLocally(bookmark)} 
+                          disabled={isArchiving === bookmark.id}
+                          className={`p-1.5 rounded-md transition-colors ${bookmark.archivedAt ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`} 
+                          title={bookmark.archivedAt ? `Archived on ${new Date(bookmark.archivedAt).toLocaleDateString()}` : "Archive Locally (Ghost Copy)"}
+                        >
+                          {isArchiving === bookmark.id ? <Loader2 size={16} className="animate-spin" /> : <Ghost size={16} />}
+                        </button>
+                        {bookmark.archivedAt && (
+                          <button 
+                            onClick={() => window.open(`/api/archive/${bookmark.id}`, '_blank')}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" 
+                            title="View Local Archive"
+                          >
+                            <Eye size={16} />
+                          </button>
+                        )}
                         <button onClick={async () => {
                           const updated = { ...bookmark, readLater: bookmark.readLater ? 0 : 1 };
                           const newBms = bookmarks.map(b => b.id === bookmark.id ? updated : b);
@@ -901,6 +1089,8 @@ export default function App() {
                     bookmark={bookmark} 
                     idx={idx}
                     onGeekMode={() => setGeekModeBookmark(bookmark)}
+                    onArchive={() => handleArchiveLocally(bookmark)}
+                    isArchiving={isArchiving === bookmark.id}
                     onDelete={async () => {
                       const newBms = bookmarks.filter(b => b.id !== bookmark.id);
                       await saveBookmarksToDB(newBms);
@@ -1109,12 +1299,49 @@ export default function App() {
                 title="Phase 5: The Next Level (Future)" 
                 status="active"
                 items={[
+                  { text: "AI Chat with Library (Natural language search & organization)", done: true },
+                  { text: "Ghost Archiving (Local HTML copies of bookmarked pages)", done: true },
+                  { text: "Automatic Database Backups (Hourly local snapshots)", done: true },
                   { text: "Cross-Platform Magic Sync (Windows & Linux support)", done: false },
                   { text: "Browser Extension (Save directly to MarkFlow from your browser)", done: false },
                   { text: "Collaborative Folders (Share curated lists with friends/team)", done: false },
-                  { text: "Full-Text Page Archival (Save the actual HTML content of the page for offline viewing)", done: false },
                 ]}
               />
+            </div>
+
+            <div className="mt-12 border-t border-slate-100 pt-8">
+              <h2 className="text-2xl font-semibold text-slate-900 flex items-center gap-2 mb-6">
+                <ListTodo className="text-emerald-600" />
+                Current TODO List
+              </h2>
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">High Priority</h3>
+                  <ul className="space-y-3">
+                    <li className="flex items-center gap-3 text-slate-700">
+                      <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                      Implement Windows/Linux Magic Sync
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-700">
+                      <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                      Build Browser Extension (Chrome/Firefox)
+                    </li>
+                  </ul>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Enhancements</h3>
+                  <ul className="space-y-3">
+                    <li className="flex items-center gap-3 text-slate-700">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                      Add PDF export for Ghost Archives
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-700">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                      Implement "Vibe Search" (Semantic Search)
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -1296,11 +1523,31 @@ export default function App() {
                     </button>
                   </div>
                   <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                    <h4 className="font-medium text-slate-900 mb-1">Download Raw Database</h4>
+                    <p className="text-xs text-slate-500 mb-4">Download the actual SQLite .db file. Great for advanced users or moving to another computer.</p>
+                    <a href="/api/database/download" className="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
+                      <Database size={16} /> Download .db File
+                    </a>
+                  </div>
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
                     <h4 className="font-medium text-slate-900 mb-1">Restore Database</h4>
                     <p className="text-xs text-slate-500 mb-4">Upload a previous JSON backup to restore your entire database exactly as it was.</p>
                     <button onClick={() => restoreInputRef.current?.click()} className="w-full py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors flex items-center justify-center gap-2">
                       <UploadCloudIcon size={16} /> Restore Backup
                     </button>
+                  </div>
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                    <h4 className="font-medium text-slate-900 mb-1">Automatic Backups</h4>
+                    <p className="text-xs text-slate-500 mb-4">Automatically save a local snapshot of your database every hour.</p>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setAutoBackupEnabled(!autoBackupEnabled)}
+                        className={`w-full py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${autoBackupEnabled ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}
+                      >
+                        {autoBackupEnabled ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                        {autoBackupEnabled ? 'Enabled' : 'Disabled'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1412,6 +1659,83 @@ export default function App() {
           </motion.div>
         </div>
       )}
+
+      {/* AI Chat Panel */}
+      <AnimatePresence>
+        {showChat && (
+          <motion.div 
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed top-0 right-0 w-96 h-full bg-white shadow-2xl z-[60] border-l border-slate-200 flex flex-col"
+          >
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white">
+              <div className="flex items-center gap-2">
+                <MessageSquare size={20} />
+                <h2 className="font-semibold">MarkFlow AI Chat</h2>
+              </div>
+              <button onClick={() => setShowChat(false)} className="p-1 hover:bg-indigo-500 rounded-md transition-colors">
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+              {chatMessages.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Sparkles size={24} />
+                  </div>
+                  <h3 className="text-slate-900 font-medium mb-1">Ask anything!</h3>
+                  <p className="text-slate-500 text-xs px-8">
+                    "Find my recipes," "Move all GitHub links to a Tech folder," or "Summarize my recent saves."
+                  </p>
+                </div>
+              )}
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-800 border border-slate-200 shadow-sm'}`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {isChatting && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2">
+                    <Loader2 size={16} className="animate-spin text-indigo-600" />
+                    <span className="text-xs text-slate-500">Thinking...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-white">
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleChat(chatInput);
+                }}
+                className="flex gap-2"
+              >
+                <input 
+                  type="text" 
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Type a message..."
+                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+                <button 
+                  type="submit"
+                  disabled={isChatting || !chatInput.trim()}
+                  className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  <Send size={18} />
+                </button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1536,7 +1860,7 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGeekMode }: any) {
+function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGeekMode, onArchive, isArchiving }: any) {
   const [imgError, setImgError] = useState(false);
   
   // Use Google's high-res favicon service for a fast, reliable image that doesn't require scraping
@@ -1595,6 +1919,23 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
             <button onClick={onGeekMode} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Geek Mode (Metadata)">
               <Terminal size={14} />
             </button>
+            <button 
+              onClick={onArchive} 
+              disabled={isArchiving}
+              className={`p-1.5 rounded-md transition-colors ${bookmark.archivedAt ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`} 
+              title={bookmark.archivedAt ? `Archived on ${new Date(bookmark.archivedAt).toLocaleDateString()}` : "Archive Locally (Ghost Copy)"}
+            >
+              {isArchiving ? <Loader2 size={14} className="animate-spin" /> : <Ghost size={14} />}
+            </button>
+            {bookmark.archivedAt && (
+              <button 
+                onClick={() => window.open(`/api/archive/${bookmark.id}`, '_blank')}
+                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" 
+                title="View Local Archive"
+              >
+                <Eye size={14} />
+              </button>
+            )}
             <button onClick={() => {
               const updated = { ...bookmark, readLater: bookmark.readLater ? 0 : 1 };
               onUpdate(updated);

@@ -10,6 +10,12 @@ import { execSync } from 'child_process';
 const db = new Database('bookmarks.db');
 db.pragma('journal_mode = WAL');
 
+// Ensure directories exist
+const ARCHIVES_DIR = path.join(process.cwd(), 'archives');
+const BACKUPS_DIR = path.join(process.cwd(), 'backups');
+if (!fs.existsSync(ARCHIVES_DIR)) fs.mkdirSync(ARCHIVES_DIR);
+if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR);
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS bookmarks (
     id TEXT PRIMARY KEY,
@@ -22,7 +28,8 @@ db.exec(`
     tags TEXT,
     imageUrl TEXT,
     readLater INTEGER DEFAULT 0,
-    source TEXT DEFAULT 'manual'
+    source TEXT DEFAULT 'manual',
+    archivedAt TEXT
   );
 `);
 
@@ -32,6 +39,7 @@ try { db.exec('ALTER TABLE bookmarks ADD COLUMN tags TEXT;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN imageUrl TEXT;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN readLater INTEGER DEFAULT 0;'); } catch (e) {}
 try { db.exec('ALTER TABLE bookmarks ADD COLUMN source TEXT DEFAULT "manual";'); } catch (e) {}
+try { db.exec('ALTER TABLE bookmarks ADD COLUMN archivedAt TEXT;'); } catch (e) {}
 
 async function startServer() {
   const app = express();
@@ -58,14 +66,27 @@ async function startServer() {
   app.post("/api/bookmarks/batch", (req, res) => {
     const { bookmarks } = req.body;
     try {
-      const insert = db.prepare('INSERT OR REPLACE INTO bookmarks (id, title, url, status, folder, dateAdded, summary, tags, imageUrl, readLater, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      const insert = db.prepare('INSERT OR REPLACE INTO bookmarks (id, title, url, status, folder, dateAdded, summary, tags, imageUrl, readLater, source, archivedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       const insertMany = db.transaction((bms) => {
         for (const b of bms) {
-          insert.run(b.id, b.title, b.url, b.status, b.folder, b.dateAdded, b.summary || null, b.tags ? JSON.stringify(b.tags) : null, b.imageUrl !== undefined ? b.imageUrl : null, b.readLater ? 1 : 0, b.source || 'manual');
+          insert.run(b.id, b.title, b.url, b.status, b.folder, b.dateAdded, b.summary || null, b.tags ? JSON.stringify(b.tags) : null, b.imageUrl !== undefined ? b.imageUrl : null, b.readLater ? 1 : 0, b.source || 'manual', b.archivedAt || null);
         }
       });
       insertMany(bookmarks);
       res.json({ success: true, count: bookmarks.length });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.delete("/api/bookmarks/:id", (req, res) => {
+    const { id } = req.params;
+    try {
+      db.prepare('DELETE FROM bookmarks WHERE id = ?').run(id);
+      // Also delete archive if exists
+      const archivePath = path.join(ARCHIVES_DIR, `${id}.html`);
+      if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath);
+      res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: String(error) });
     }
@@ -145,6 +166,71 @@ async function startServer() {
       } else {
         res.json({ available: false });
       }
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  // Ghost Archiving (Local Time Capsule)
+  app.post("/api/archive", async (req, res) => {
+    const { id, url } = req.body;
+    try {
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MarkFlowBot/1.0)' }
+      });
+      const html = await response.text();
+      const archivePath = path.join(ARCHIVES_DIR, `${id}.html`);
+      fs.writeFileSync(archivePath, html);
+      
+      const archivedAt = new Date().toISOString();
+      db.prepare('UPDATE bookmarks SET archivedAt = ? WHERE id = ?').run(archivedAt, id);
+      
+      res.json({ success: true, archivedAt });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
+  app.get("/api/archive/:id", (req, res) => {
+    const { id } = req.params;
+    const archivePath = path.join(ARCHIVES_DIR, `${id}.html`);
+    if (fs.existsSync(archivePath)) {
+      res.sendFile(archivePath);
+    } else {
+      res.status(404).send('Archive not found');
+    }
+  });
+
+  // Database Download
+  app.get("/api/database/download", (req, res) => {
+    const dbPath = path.join(process.cwd(), 'bookmarks.db');
+    if (fs.existsSync(dbPath)) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      res.download(dbPath, `markflow-database-${timestamp}.db`);
+    } else {
+      res.status(404).send('Database file not found');
+    }
+  });
+
+  // Automatic Backup Trigger
+  app.post("/api/database/auto-backup", (req, res) => {
+    try {
+      const dbPath = path.join(process.cwd(), 'bookmarks.db');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(BACKUPS_DIR, `auto-backup-${timestamp}.db`);
+      fs.copyFileSync(dbPath, backupPath);
+      
+      // Keep only last 10 auto-backups
+      const files = fs.readdirSync(BACKUPS_DIR)
+        .filter(f => f.startsWith('auto-backup-'))
+        .map(f => ({ name: f, time: fs.statSync(path.join(BACKUPS_DIR, f)).mtime.getTime() }))
+        .sort((a, b) => b.time - a.time);
+      
+      if (files.length > 10) {
+        files.slice(10).forEach(f => fs.unlinkSync(path.join(BACKUPS_DIR, f.name)));
+      }
+      
+      res.json({ success: true, path: backupPath });
     } catch (error) {
       res.status(500).json({ error: String(error) });
     }

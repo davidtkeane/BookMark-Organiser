@@ -5,6 +5,20 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-03-01
+
+### Added
+- **AI Chat Integration:** A new "Chat with your Library" panel powered by Gemini 3.1 Flash. Users can now search, move, and delete bookmarks using natural language commands.
+- **Ghost Archiving (Local Time Capsule):** Added the ability to save a full HTML snapshot of any bookmarked page locally. Archived pages can be viewed even if the original site goes offline.
+- **Automatic Hourly Backups:** Implemented a background task that creates a timestamped backup of the database every hour. The system automatically manages the last 10 backups to save space.
+- **Raw Database Download:** Added a button in the Data & Backups modal to download the actual `bookmarks.db` SQLite file for advanced users.
+- **Archive Viewer:** Integrated a local viewer for Ghost Archives, accessible directly from bookmark cards.
+
+### Changed
+- **Smart Views:** Added "AI Chat" as a dedicated entry in the sidebar's Smart Views section.
+- **Bookmark Cards:** Updated both List and Grid views to include Ghost Archiving and Archive View action buttons.
+- **Roadmap:** Updated the internal roadmap to reflect the completion of Phase 5's core features.
+
 ## [2.1.1] - 2026-03-01
 
 ### Fixed
