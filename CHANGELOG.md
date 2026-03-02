@@ -5,6 +5,106 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0] - 2026-03-02
+
+### Added
+- **Version Display**: Added the current application version (v3.10.0) directly in the sidebar under the Settings button for quick reference and professional transparency.
+
+### Changed
+- **Version Sync**: Synchronized `package.json` and the UI to reflect the latest stable build.
+
+## [3.9.0] - 2026-03-02
+
+### Added
+- **Unified Action Styling**: Standardized the primary sidebar buttons (Magic Sync, Import HTML, View Roadmap) to use a consistent, theme-aware "Action Button" style.
+- **Advanced Theme Integration**: Leveraged CSS variable inheritance to ensure action buttons automatically adapt to Light, Dark, Matrix, and Ranger themes without manual color overrides.
+
+### Changed
+- **Visual Consistency**: Replaced high-contrast gradients and heavy backgrounds with a subtle, professional aesthetic that improves UI focus.
+
+## [3.8.0] - 2026-03-02
+
+### Added
+- **Integrated Support Dashboard**: Created a dedicated "Support" tab within the Settings modal.
+    - **Community Support**: Relocated "Buy me a Coffee" and "Buy me a H3llCoin" buttons from the sidebar to this new centralized dashboard for a cleaner, more professional primary UI.
+    - **Balanced Design**: Both support buttons are now uniform in size and style, featuring high-fidelity hover states.
+- **Official Credits**: Added a project credits section in the Support tab, acknowledging the Commander David and the AI Trinity (Gemini, Claude, Ollama).
+- **Roadmap Sync**: Updated the application Roadmap (Phase 7) to reflect the rapid progress in AI Personalization and Command Center architecture.
+
+### Changed
+- **Sidebar De-clutter**: Cleaned up the sidebar by moving external links into the Settings modal, allowing the user to focus strictly on their bookmark library.
+
+## [3.7.0] - 2026-03-02
+
+### Added
+- **AI Personalization Engine**: Users can now provide their name in the Intelligence settings. MarkFlow AI will address you personally (e.g., "Hello Commander David!") in all chat interactions.
+- **Message Timestamps**: Added precise timestamps to every chat message (user and AI) for better session tracking and a professional look.
+- **Enhanced System Prompt**: Refined the AI's internal instructions to prioritize personalized interaction when a name is available.
+
+## [3.6.0] - 2026-03-02
+
+### Added
+- **Click-to-Dismiss Modals**: Enabled "click outside to close" logic for Help, Command Center, and Settings modals. Users can now click anywhere on the backdrop to dismiss the active module.
+- **H3llCoin Support**: Added a new "Buy me a H3llCoin" button to the sidebar, styled with an orange tactical palette and linked to h3llcoin.com.
+
+## [3.5.0] - 2026-03-02
+
+### Added
+- **Sidebar-Tabbed Settings**: Overhauled the Settings modal into a professional, multi-tabbed interface.
+    - **AI Engine**: Model selection, API connectivity, and neural usage stats.
+    - **Interface**: System themes and Matrix brand customization.
+    - **Intelligence**: Granular controls for the Proactive AI Assistant.
+    - **Developer**: Full step-by-step Quickstart guide.
+- **Theme-Aware Auto-Prompt**: The AI assistant popup now dynamically adjusts its coloring (background, text, progress bars) based on the active theme (Light, Dark, Matrix, or Ranger).
+
+### Changed
+- **Sidebar Polish**: Reduced the size of the "Buy Me a Coffee" button for a more balanced and compact sidebar layout.
+- **Improved Toast UX**: Refined button states and hover effects for the inactivity assistant popup.
+
+## [3.4.0] - 2026-03-02
+
+### Added
+- **Advanced Auto-Prompt Controls**: Integrated new granular settings for the Inactivity AI Assistant.
+    - **Toggle System**: Easily enable/disable the proactive AI popup from the Smart Assistant dashboard.
+    - **Custom Timing**: Added a reactive-to-patient slider (5s to 60s) to control when the assistant appears.
+    - **Snooze Logic**: Introduced a "Snooze (5m)" option directly in the popup to silence alerts temporarily.
+- **Overhauled AI Popup UI**: A high-fidelity "Excellent" toast notification.
+    - **One-Click Dismissal**: Added a dedicated top-right 'X' button for instant closure.
+    - **Tactical Visuals**: New dark-mode styling with glowing progress bars and animated intelligence icons.
+    - **Smooth Animations**: Refined motion paths for a more premium application feel.
+
+## [3.3.0] - 2026-03-02
+
+### Added
+- **AI Chat Widget Overhaul**: Transformed the AI Chat into a professional-grade assistant panel.
+    - **Header Actions**: Added "Clear Chat" and "Export Chat" (.txt) buttons for better conversation management.
+    - **Suggested Prompt Chips**: Integrated quick-action buttons for common tasks like searching recipes, checking dead links, and organizing folders.
+    - **Message Interaction**: Added "Copy to Clipboard" buttons for AI responses and refined message headers.
+    - **Auto-Scrolling**: The chat now automatically scrolls to the latest message or "Thinking" state.
+    - **Visual Refinements**: Introduced a new start page with an Intelligence Dashboard, bouncing-dot typing indicators, and tactical shadows.
+
+## [3.2.0] - 2026-03-02
+
+### Added
+- **Command Center Architecture**: Complete overhaul of the "Data & Backups" modal into a sidebar-tabbed "Command Center".
+    - **Vault (Backups)**: Unified view for JSON snapshots, SQLite DB downloads, and Auto-Guard settings.
+    - **Migration Tools**: Dedicated tools for browser-specific exports and direct source assignments.
+    - **Security & Wipe**: Centralized "Danger Zone" for chat clearing and tactical database wipes.
+- **Ranger Branding**: Integrated the official `ranger.png` logo across the application.
+    - **Favicon**: Added the Ranger helmet as the browser tab icon.
+    - **Sidebar Integration**: The logo now appears beside "MarkFlow" in the sidebar when the Ranger theme is active.
+    - **Tab Title**: Updated to "MarkFlow - AI Bookmark Manager".
+- **Advanced Wiki (v3.1.0)**: Refactored the help system into a modern, multi-tabbed knowledge base.
+    - Added sections for **Basics**, **AI Intelligence**, **Sync & Import**, and **Troubleshooting**.
+
+### Changed
+- **UX Optimization**: Modals now have a fixed 80vh height with internal scrolling, preventing UI overflow on smaller screens and providing a "desktop-app" feel.
+- **Typography & Icons**: Refined modal typography and updated icons to a more tactical, professional style.
+
+### Fixed
+- **JSX Syntax Fix**: Resolved a critical build error caused by stray braces in `App.tsx` during the modal refactor.
+- **API Model Alignment**: Finalized model selection to use the latest 2026 Gemini 3 series by default.
+
 ## [3.1.0] - 2026-03-02
 
 ### Changed

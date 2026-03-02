@@ -19,7 +19,8 @@ MarkFlow is a lightning-fast, local-first bookmark manager that uses AI to organ
 *   **🤓 Geek Mode:** View raw metadata (JSON, source browser, exact timestamps) and force-fetch missing favicons via DuckDuckGo.
 *   **⚡ High-Performance UI:** Pagination (100 items/page), breadcrumb navigation, and high-res Google Favicons allow the app to handle 10,000+ bookmarks without breaking a sweat.
 *   **💾 Data Portability:** Full SQLite database JSON backups, restores, and standard Netscape HTML exports.
-*   **🎨 Theming:** Choose between Light, Dark, and Matrix themes.
+*   **🎨 Theming:** Choose between Light, Dark, Matrix, and Ranger themes.
+*   **🤖 AI Assistant Panel:** A professional chat widget to search your library, summarize bookmarks, move folders, and export conversations. Includes suggested prompt chips for common tasks.
 
 ## 🚀 Getting Started
 

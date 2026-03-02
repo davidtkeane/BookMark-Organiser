@@ -40,6 +40,13 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatting, setIsChatting] = useState(false);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showChat) {
+      document.getElementById('chat-bottom')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, isChatting, showChat]);
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => {
     return localStorage.getItem('auto_backup_enabled') !== 'false';
   });
@@ -71,6 +78,7 @@ export default function App() {
   const [autoPromptDismissedUntil, setAutoPromptDismissedUntil] = useState(0);
   const autoPromptTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [customMatrixLogo, setCustomMatrixLogo] = useState(() => localStorage.getItem('custom_matrix_logo') || null);
+  const [userName, setUserName] = useState(() => localStorage.getItem('user_name') || '');
 
   useEffect(() => {
     if (!autoPromptEnabled || showChat || Date.now() < autoPromptDismissedUntil) return;
@@ -148,6 +156,11 @@ export default function App() {
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('selected_model') || 'gemini-3-flash-preview';
   });
+  
+  // Modal Tab States
+  const [activeHelpTab, setActiveHelpTab] = useState('basics');
+  const [activeDataTab, setActiveDataTab] = useState('backups');
+  const [activeSettingsTab, setActiveSettingsTab] = useState('ai');
 
   const [aiStats, setAiStats] = useState(() => {
     const saved = localStorage.getItem('ai_stats');
@@ -897,7 +910,11 @@ export default function App() {
   const handleChat = async (message: string) => {
     if (!message.trim()) return;
     
-    const userMsg = { role: 'user', content: message };
+    const userMsg = { 
+      role: 'user', 
+      content: message,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput('');
     setIsChatting(true);
@@ -955,10 +972,12 @@ export default function App() {
         ]
       }];
 
+      const systemPrompt = `You are MarkFlow AI, a helpful assistant for managing bookmarks. ${userName ? `The user's name is ${userName}. Always address them by name when appropriate.` : ''} The user has ${bookmarks.length} bookmarks. You can help them search, organize, and manage their library. You have access to the full chat history which is saved in the database. Use the provided tools to interact with the database. If you perform an action, explain what you did. You can also chat about anything else the user wants.`;
+
       const response = await ai.models.generateContent({
         model: selectedModel,
         contents: [
-          { role: 'user', parts: [{ text: `You are MarkFlow AI, a helpful assistant for managing bookmarks. The user has ${bookmarks.length} bookmarks. You can help them search, organize, and manage their library. You have access to the full chat history which is saved in the database. Use the provided tools to interact with the database. If you perform an action, explain what you did. You can also chat about anything else the user wants.` }] },
+          { role: 'user', parts: [{ text: systemPrompt }] },
           ...chatMessages.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
           { role: 'user', parts: [{ text: message }] }
         ],
@@ -1027,7 +1046,11 @@ export default function App() {
         aiResponseText = "I'm sorry, I couldn't generate a response. Please try again.";
       }
 
-      const modelMsg = { role: 'model', content: aiResponseText };
+      const modelMsg = { 
+        role: 'model', 
+        content: aiResponseText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
       setChatMessages(prev => [...prev, modelMsg]);
 
       // Save model response to DB
@@ -1039,7 +1062,11 @@ export default function App() {
 
     } catch (error) {
       console.error("AI Chat Error:", error);
-      const errorMsg = { role: 'model', content: "Sorry, I encountered an error while processing your request." };
+      const errorMsg = { 
+        role: 'model', 
+        content: "Sorry, I encountered an error while processing your request.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
       setChatMessages(prev => [...prev, errorMsg]);
       fetch('/api/chat', {
         method: 'POST',
@@ -1128,7 +1155,7 @@ export default function App() {
             <button 
               onClick={handleMagicSync} 
               disabled={isSyncing || !Object.values(localBrowsers).some(Boolean)}
-              className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
               {isSyncing ? "Syncing Browsers..." : "Magic Sync"}
@@ -1140,7 +1167,7 @@ export default function App() {
               ref={fileInputRef} 
               onChange={handleFileUpload} 
             />
-            <button onClick={() => fileInputRef.current?.click()} className="w-full py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-sm">
+            <button onClick={() => fileInputRef.current?.click()} className="w-full py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
               <UploadCloudIcon size={16} />
               Import HTML File
             </button>
@@ -1220,12 +1247,11 @@ export default function App() {
           </button>
           <button onClick={() => setShowSettings(true)} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors w-full p-2 rounded-md hover:bg-slate-50">
             <Settings size={16} />
-            <span>Local Setup Guide</span>
+            <span>Settings</span>
           </button>
-          
-          <a href="https://buymeacoffee.com/davidtkeane" target="_blank" rel="noreferrer" className="mt-4 block hover:opacity-90 transition-opacity">
-            <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=davidtkeane&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" className="w-full rounded-md shadow-sm" />
-          </a>
+          <div className="px-2 pt-2 text-[10px] text-slate-400 font-medium tracking-widest text-center opacity-50">
+            VERSION 3.10.0
+          </div>
         </div>
       </div>
 
@@ -1771,33 +1797,35 @@ export default function App() {
                 ]}
               />
               <RoadmapSection 
-                title="Phase 7: The Next Level (Future)" 
+                title="Phase 7: The Next Level (In Progress)" 
                 status="active"
                 items={[
+                  { text: "AI Personalization (Address user by name)", done: true },
+                  { text: "Universal Command Center (Tabbed Settings & Backups)", done: true },
+                  { text: "H3llCoin Ecosystem Integration", done: true },
                   { text: "Cross-Platform Magic Sync (Windows & Linux support)", done: false },
                   { text: "iOS Standalone App (App Store Release)", done: false },
-                  { text: "Browser Extension (Save directly to MarkFlow from your browser)", done: false },
-                  { text: "Collaborative Folders (Share curated lists with friends/team)", done: false },
+                  { text: "Browser Extension (Save directly to MarkFlow)", done: false },
                 ]}
               />
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.0.0)</h4>
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.7.0)</h4>
                 <ul className="space-y-1">
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Bookmark Intelligence Editor (Tabs: Edit, Meta, AI)
+                    AI Personalization (User Names & Timestamps)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    AI Keyword & Tag Generation (Gemini Integration)
+                    Universal Sidebar-Tabbed Architecture (Settings, Wiki, Data)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Title Editing & Auto-Fetch (Magic Wand)
+                    H3llCoin Support Button Integration
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Standard Grid Spacing Fix
+                    Modal Click-Outside-to-Close UX
                   </li>
                 </ul>
               </div>
@@ -2129,145 +2157,196 @@ export default function App() {
         </div>
       )}
 
-      {/* Help & Wiki Modal */}
-      {showHelpModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-8 max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-y-auto border border-slate-200"
-          >
-            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-              <h2 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-                <HelpCircle className="text-indigo-600 w-8 h-8" />
-                MarkFlow Wiki (v3.0.0)
-              </h2>
-              <button onClick={() => setShowHelpModal(false)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors">
-                <XCircle size={28} />
-              </button>
-            </div>
-            
-            <div className="space-y-8 text-lg leading-relaxed text-slate-800 font-sans">
-              
-              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <Database className="text-emerald-600" /> 1. Where is my data saved?
-                </h3>
-                <p className="mb-3">
-                  Everything you do in MarkFlow is saved <strong>locally on your computer</strong>. 
-                </p>
-                <p>
-                  We use a hidden file called a database. Nothing is sent to the cloud, except when you ask the AI to organize your folders. This means your data is private and secure.
-                </p>
-              </section>
-
-              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <DownloadCloud className="text-blue-600" /> 2. Why and how should I backup?
-                </h3>
-                <p className="mb-3">
-                  Because your data lives only on your computer, if you delete it by mistake, it is gone!
-                </p>
-                <ul className="list-disc pl-6 space-y-2 mb-3">
-                  <li>Click the <strong>Data & Backups</strong> button in the sidebar.</li>
-                  <li>Click <strong>Backup Entire Database</strong>.</li>
-                  <li>Save this file to a safe folder, like a "Backups" folder on your Desktop.</li>
-                </ul>
-                <p className="text-slate-500 italic">
-                  Tip: The app automatically adds the date and time to the file name, so your backups will never overwrite each other!
-                </p>
-              </section>
-
-              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <RefreshCw className="text-purple-600" /> 3. Magic Sync vs. Single Import
-                </h3>
-                <p className="mb-3">
-                  You have two ways to bring your bookmarks into MarkFlow:
-                </p>
-                <ul className="list-disc pl-6 space-y-4">
-                  <li>
-                    <strong>Magic Sync:</strong> This button pulls bookmarks from <em>all</em> your installed browsers (Chrome, Safari, Firefox, Brave) at the exact same time. It is fast and easy.
-                  </li>
-                  <li>
-                    <strong>Single Import:</strong> Look under "Local Browsers" in the sidebar. You can click just Chrome, or just Safari. This gives you full control if you only want to work on one browser at a time.
-                  </li>
-                </ul>
-              </section>
-
-              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <Sparkles className="text-indigo-600" /> 4. What does AI Deep Clean do?
-                </h3>
-                <p className="mb-3">
-                  When you have a lot of bookmarks in the "Uncategorized" folder, click <strong>AI Organize</strong>.
-                </p>
-                <p>
-                  The AI will read the titles and sort them into neat folders for you. Always remember to <strong>backup your data first</strong> before running a big AI Deep Clean, just in case you want to undo it!
-                </p>
-              </section>
-
-              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <Terminal className="text-slate-700" /> 5. How to get an AI API Key?
-                </h3>
-                <p className="mb-3">
-                  MarkFlow uses Google's Gemini AI. To use the AI features, you need a free API key:
-                </p>
-                <ol className="list-decimal pl-6 space-y-2 mb-4">
-                  <li>Go to the <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline">Google AI Studio API Key page</a>.</li>
-                  <li>Sign in with your Google account.</li>
-                  <li>Click <strong>Create API key</strong>.</li>
-                  <li>Copy the key and paste it into your <code>.env</code> file as <code>VITE_GEMINI_API_KEY=your_key_here</code>.</li>
-                </ol>
-                <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg mb-4">
-                  <p className="text-sm text-amber-800 font-medium flex items-center gap-2">
-                    <AlertTriangle size={18} /> Important Note on Billing
-                  </p>
-                  <p className="text-xs text-amber-700 mt-1">
-                    While the Gemini API has a generous free tier, Google may require you to link a <strong>Billing Account</strong> to your project to access certain models or to prevent abuse. You can manage this in the <a href="https://console.cloud.google.com/billing" target="_blank" rel="noreferrer" className="underline font-bold">Google Cloud Console</a>.
-                  </p>
-                </div>
-                <p className="text-sm text-slate-500">
-                  Most developers on GitHub already have a Google account, making this the easiest way to get high-powered AI for free!
-                </p>
-              </section>
-
-              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
-                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  <Chrome className="text-indigo-600" /> 6. Troubleshooting (M3 Macs & Keys)
-                </h3>
-                <p className="mb-3">
-                  If the AI Chat is not working on your M3 Mac or other device:
-                </p>
-                <ul className="list-disc pl-6 space-y-2 mb-4">
-                  <li><strong>Check your Key:</strong> Ensure you are using a key from <strong>Google AI Studio</strong> (not a standard Google Cloud API key unless you've enabled the "Generative Language API").</li>
-                  <li><strong>Browser Extensions:</strong> Some ad-blockers or privacy extensions might block the connection to Google's AI servers. Try disabling them for this site.</li>
-                  <li><strong>Environment Variables:</strong> If you are running MarkFlow locally, ensure the <code>VITE_GEMINI_API_KEY</code> is correctly set in your <code>.env</code> file and you have restarted the server.</li>
-                </ul>
-              </section>
-
-            </div>
-          </motion.div>
-        </div>
-      )}
+            {/* Help & Wiki Modal */}
+            {showHelpModal && (
+              <div 
+                className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                onClick={() => setShowHelpModal(false)}
+              >
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl h-[80vh] overflow-hidden border border-slate-200 flex flex-col"
+                >
+                  <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                        <HelpCircle size={22} />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-slate-900">MarkFlow Wiki</h2>
+                        <p className="text-xs text-slate-500 font-medium tracking-tight">Version 3.1.0 • Knowledge Base</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowHelpModal(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-colors">
+                      <XCircle size={24} />
+                    </button>
+                  </div>
+                  
+                  <div className="flex flex-1 overflow-hidden">
+                    {/* Sidebar Tabs */}
+                    <div className="w-56 border-r border-slate-100 p-4 space-y-2 bg-slate-50/30">
+                      {[
+                        { id: 'basics', label: 'Basics', icon: BookOpen },
+                        { id: 'ai', label: 'AI Intelligence', icon: Sparkles },
+                        { id: 'sync', label: 'Sync & Import', icon: RefreshCw },
+                        { id: 'trouble', label: 'Troubleshooting', icon: AlertCircle },
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveHelpTab(tab.id)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                            activeHelpTab === tab.id 
+                            ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' 
+                            : 'text-slate-500 hover:bg-slate-100'
+                          }`}
+                        >
+                          <tab.icon size={18} />
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+      
+                    {/* Content Area */}
+                    <div className="flex-1 overflow-y-auto p-8">
+                      {activeHelpTab === 'basics' && (
+                        <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                          <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                              <Database className="text-emerald-600" size={20} /> 1. Where is my data saved?
+                            </h3>
+                            <p className="text-slate-600 text-sm leading-relaxed mb-3">
+                              Everything in MarkFlow is saved <strong>locally on your computer</strong> in a high-performance SQLite database.
+                            </p>
+                            <p className="text-slate-600 text-sm leading-relaxed">
+                              Nothing is sent to the cloud (except for processing AI requests). Your browsing habits remain private, secure, and entirely under your control.
+                            </p>
+                          </section>
+      
+                          <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                              <DownloadCloud className="text-blue-600" size={20} /> 2. Why should I backup?
+                            </h3>
+                            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                              Because your data lives only on your computer, if you delete the database or lose your machine, your organization is gone forever.
+                            </p>
+                            <div className="bg-blue-100/50 p-4 rounded-xl border border-blue-100">
+                              <p className="text-xs text-blue-800 font-bold uppercase tracking-widest mb-2">How to backup:</p>
+                              <ul className="list-disc pl-5 space-y-1 text-sm text-blue-900">
+                                <li>Go to <strong>Data & Backups</strong> in the sidebar.</li>
+                                <li>Click <strong>Download Backup</strong>.</li>
+                                <li>Save the file to a safe location like iCloud or Dropbox.</li>
+                              </ul>
+                            </div>
+                          </section>
+                        </motion.div>
+                      )}
+      
+                      {activeHelpTab === 'ai' && (
+                        <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                          <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                              <Sparkles className="text-indigo-600" size={20} /> AI Deep Clean
+                            </h3>
+                            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                              The <strong>AI Organize</strong> feature uses Gemini 3.1 to read your bookmark titles and sort them into logical, beautiful folder structures.
+                            </p>
+                            <p className="text-slate-600 text-sm leading-relaxed">
+                              Tip: Always perform a manual backup before running a Deep Clean so you can revert if you don't like the new structure!
+                            </p>
+                          </section>
+      
+                          <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                              <Terminal className="text-slate-700" size={20} /> Getting an API Key
+                            </h3>
+                            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                              MarkFlow requires a free Google Gemini key to function.
+                            </p>
+                            <ol className="list-decimal pl-5 space-y-2 text-sm text-slate-700">
+                              <li>Visit the <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline">Google AI Studio</a>.</li>
+                              <li>Click <strong>Create API key</strong>.</li>
+                              <li>Add it to your <code>.env</code> file as <code>VITE_GEMINI_API_KEY</code>.</li>
+                            </ol>
+                          </section>
+                        </motion.div>
+                      )}
+      
+                      {activeHelpTab === 'sync' && (
+                        <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                          <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                              <RefreshCw className="text-purple-600" size={20} /> Magic Sync
+                            </h3>
+                            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                              Magic Sync scans your MacBook for all installed browsers (Chrome, Safari, Brave, Firefox) and imports everything into one master library.
+                            </p>
+                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-xs text-amber-800 italic">
+                              Warning: This will skip bookmarks that already exist in your library to prevent duplicates.
+                            </div>
+                          </section>
+      
+                          <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                              <UploadCloudIcon className="text-blue-600" size={20} /> Manual Imports
+                            </h3>
+                            <p className="text-slate-600 text-sm leading-relaxed">
+                              If you prefer to import one browser at a time, use the "Local Browsers" section in the sidebar. This allows you to focus on specific collections.
+                            </p>
+                          </section>
+                        </motion.div>
+                      )}
+      
+                      {activeHelpTab === 'trouble' && (
+                        <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                          <section className="bg-rose-50 p-6 rounded-2xl border border-rose-100">
+                            <h3 className="text-lg font-bold text-rose-900 mb-3 flex items-center gap-2">
+                              <AlertTriangle className="text-rose-600" size={20} /> Connection Failed?
+                            </h3>
+                            <ul className="list-disc pl-5 space-y-3 text-sm text-rose-800">
+                              <li><strong>Check API Key:</strong> Ensure it starts with <code>AIza</code> and is correctly saved in your <code>.env</code> file.</li>
+                              <li><strong>Restart Server:</strong> After editing <code>.env</code>, you must restart the app (<code>npm run dev</code>).</li>
+                              <li><strong>Ad-Blockers:</strong> Some browsers block <code>generativelanguage.googleapis.com</code>. Try disabling your ad-blocker.</li>
+                            </ul>
+                          </section>
+      
+                          <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                              <Chrome className="text-indigo-600" size={20} /> M3 Mac Permissions
+                            </h3>
+                            <p className="text-slate-600 text-sm leading-relaxed">
+                              If Magic Sync fails, check your System Settings. Node.js requires "Full Disk Access" to read browser profile files located in the Library folder.
+                            </p>
+                          </section>
+                        </motion.div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
 
       {/* Data & Backups Modal */}
       {showDataModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowDataModal(false)}
+        >
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full h-[80vh] overflow-hidden flex flex-col border border-slate-200"
           >
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
-                  <Database size={20} />
+                <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                  <Database size={22} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Data & Backups</h2>
-                  <p className="text-sm text-slate-500">Manage your database, backups, and browser exports</p>
+                  <h2 className="text-xl font-bold text-slate-900">Command Center</h2>
+                  <p className="text-xs text-slate-500 font-medium tracking-tight">Database & Infrastructure Control</p>
                 </div>
               </div>
               <button onClick={() => setShowDataModal(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors">
@@ -2275,133 +2354,163 @@ export default function App() {
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto space-y-8">
-              {/* Full Database Section */}
-              <section>
-                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Full Database</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                    <h4 className="font-medium text-slate-900 mb-1">Backup Everything</h4>
-                    <p className="text-xs text-slate-500 mb-4">Downloads a complete JSON snapshot of all bookmarks, AI summaries, tags, and folders.</p>
-                    <button onClick={handleBackup} className="w-full py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
-                      <DownloadCloud size={16} /> Download Backup
-                    </button>
-                  </div>
-                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                    <h4 className="font-medium text-slate-900 mb-1">Download Raw Database</h4>
-                    <p className="text-xs text-slate-500 mb-4">Download the actual SQLite .db file. Great for advanced users or moving to another computer.</p>
-                    <a href="/api/database/download" className="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
-                      <Database size={16} /> Download .db File
-                    </a>
-                  </div>
-                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                    <h4 className="font-medium text-slate-900 mb-1">Restore Database</h4>
-                    <p className="text-xs text-slate-500 mb-4">Upload a previous JSON backup to restore your entire database exactly as it was.</p>
-                    <button onClick={() => restoreInputRef.current?.click()} className="w-full py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors flex items-center justify-center gap-2">
-                      <UploadCloudIcon size={16} /> Restore Backup
-                    </button>
-                  </div>
-                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                    <h4 className="font-medium text-slate-900 mb-1">Automatic Backups</h4>
-                    <p className="text-xs text-slate-500 mb-4">Automatically save a local snapshot of your database every hour.</p>
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => setAutoBackupEnabled(!autoBackupEnabled)}
-                        className={`w-full py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${autoBackupEnabled ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}
-                      >
-                        {autoBackupEnabled ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-                        {autoBackupEnabled ? 'Enabled' : 'Disabled'}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Sidebar Tabs */}
+              <div className="w-56 border-r border-slate-100 p-4 space-y-2 bg-slate-50/30">
+                {[
+                  { id: 'backups', label: 'Vault (Backups)', icon: ShieldCheck },
+                  { id: 'migration', label: 'Migration Tools', icon: RefreshCw },
+                  { id: 'danger', label: 'Security & Wipe', icon: AlertTriangle },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveDataTab(tab.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                      activeDataTab === tab.id 
+                      ? 'bg-white text-emerald-600 shadow-sm border border-slate-100' 
+                      : 'text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    <tab.icon size={18} />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Content Area */}
+              <div className="flex-1 overflow-y-auto p-8">
+                {activeDataTab === 'backups' && (
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/50 hover:border-emerald-200 transition-colors group">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                          <DownloadCloud size={20} />
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm mb-1">Full JSON Snapshot</h4>
+                        <p className="text-xs text-slate-500 mb-4 leading-relaxed">Download a complete, readable backup of all bookmarks, folders, and AI metadata.</p>
+                        <button onClick={handleBackup} className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all active:scale-95">
+                          Download .json
+                        </button>
+                      </div>
+
+                      <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/50 hover:border-indigo-200 transition-colors group">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                          <Database size={20} />
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm mb-1">Raw SQLite DB</h4>
+                        <p className="text-xs text-slate-500 mb-4 leading-relaxed">Download the actual engine file. For advanced users or manual database repairs.</p>
+                        <a href="/api/database/download" className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all flex items-center justify-center active:scale-95">
+                          Download .db
+                        </a>
+                      </div>
+
+                      <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/50 hover:border-blue-200 transition-colors group">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm group-hover:bg-blue-500 group-hover:text-white transition-all">
+                          <UploadCloudIcon size={20} />
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm mb-1">Restore from Vault</h4>
+                        <p className="text-xs text-slate-500 mb-4 leading-relaxed">Upload a previous JSON backup to restore your library to a previous state.</p>
+                        <button onClick={() => restoreInputRef.current?.click()} className="w-full py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all active:scale-95">
+                          Upload & Restore
+                        </button>
+                      </div>
+
+                      <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/50 hover:border-emerald-200 transition-colors group">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                          <Clock size={20} />
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm mb-1">Auto-Guard System</h4>
+                        <p className="text-xs text-slate-500 mb-4 leading-relaxed">Automatically creates a local recovery point every hour while you work.</p>
+                        <button 
+                          onClick={() => setAutoBackupEnabled(!autoBackupEnabled)}
+                          className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                            autoBackupEnabled ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {autoBackupEnabled ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                          {autoBackupEnabled ? 'Active' : 'Offline'}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeDataTab === 'migration' && (
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/50">
+                        <h4 className="font-bold text-slate-900 text-sm mb-1">Export by Source</h4>
+                        <p className="text-xs text-slate-500 mb-4 leading-relaxed">Export only bookmarks from a specific browser.</p>
+                        <div className="flex gap-2">
+                          <select id="exportSourceSelect" className="flex-1 bg-white border border-slate-200 rounded-xl text-xs px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+                            {Array.from(new Set(bookmarks.map(b => b.source).filter(Boolean))).map(source => (
+                              <option key={source as string} value={source as string}>{source as string}</option>
+                            ))}
+                          </select>
+                          <button onClick={() => {
+                            const select = document.getElementById('exportSourceSelect') as HTMLSelectElement;
+                            if (select && select.value) handleExportSource(select.value);
+                          }} className="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all active:scale-95">
+                            Export
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/50">
+                        <h4 className="font-bold text-slate-900 text-sm mb-1">Direct Browser Assign</h4>
+                        <p className="text-xs text-slate-500 mb-4 leading-relaxed">Import bookmarks and tag them as coming from a specific browser.</p>
+                        <div className="flex gap-2">
+                          <select id="importSourceSelect" className="flex-1 bg-white border border-slate-200 rounded-xl text-xs px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+                            <option value="chrome">Chrome</option>
+                            <option value="safari">Safari</option>
+                            <option value="firefox">Firefox</option>
+                            <option value="brave">Brave</option>
+                          </select>
+                          <button onClick={() => document.getElementById('browserRestoreInput')?.click()} className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all active:scale-95">
+                            Assign
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeDataTab === 'danger' && (
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                    <div className="bg-rose-50 border border-rose-100 rounded-2xl p-6 flex items-center justify-between">
+                      <div className="flex-1 pr-6">
+                        <h4 className="font-bold text-rose-900 text-sm mb-1">Clear AI Chat History</h4>
+                        <p className="text-xs text-rose-700 leading-relaxed">
+                          This will permanently erase all past conversations with the AI assistant.
+                        </p>
+                      </div>
+                      <button onClick={async () => {
+                        if (confirm("Clear all chat history?")) {
+                          await fetch('/api/chat/clear', { method: 'POST' });
+                          setChatMessages([]);
+                        }
+                      }} className="px-6 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all active:scale-95 flex items-center gap-2">
+                        <Trash2 size={14} /> Clear Chat
                       </button>
                     </div>
-                  </div>
-                </div>
-              </section>
 
-              {/* Browser Specific Section */}
-              <section>
-                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Browser Specific</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col justify-between">
-                    <div>
-                      <h4 className="font-medium text-slate-900 mb-1">Export by Browser</h4>
-                      <p className="text-xs text-slate-500 mb-4">Download a JSON backup of bookmarks from a specific browser source.</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <select id="exportSourceSelect" className="flex-1 bg-white border border-slate-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-                        {Array.from(new Set(bookmarks.map(b => b.source).filter(Boolean))).map(source => (
-                          <option key={source as string} value={source as string}>{source as string}</option>
-                        ))}
-                      </select>
+                    <div className="bg-rose-600 text-white rounded-2xl p-6 flex items-center justify-between shadow-lg shadow-rose-200">
+                      <div className="flex-1 pr-6">
+                        <h4 className="font-bold text-sm mb-1">Tactical Wipe (Wipe Database)</h4>
+                        <p className="text-xs text-rose-100 leading-relaxed">
+                          This erases everything in MarkFlow. It does NOT affect your original browser bookmarks.
+                        </p>
+                      </div>
                       <button onClick={() => {
-                        const select = document.getElementById('exportSourceSelect') as HTMLSelectElement;
-                        if (select && select.value) handleExportSource(select.value);
-                      }} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors">
-                        Export
+                        clearDatabase();
+                        setShowDataModal(false);
+                      }} className="px-6 py-2.5 bg-white text-rose-600 rounded-xl text-xs font-bold hover:bg-rose-50 transition-all active:scale-95 flex items-center gap-2">
+                        <AlertTriangle size={14} /> Wipe Everything
                       </button>
                     </div>
-                  </div>
-                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col justify-between">
-                    <div>
-                      <h4 className="font-medium text-slate-900 mb-1">Import & Assign</h4>
-                      <p className="text-xs text-slate-500 mb-4">Import a JSON backup file and assign it to a specific browser source.</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <select id="importSourceSelect" className="flex-1 bg-white border border-slate-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-                        <option value="chrome">Chrome</option>
-                        <option value="safari">Safari</option>
-                        <option value="firefox">Firefox</option>
-                        <option value="brave">Brave</option>
-                        <option value="manual">Manual</option>
-                      </select>
-                      <input type="file" accept=".json" id="browserRestoreInput" className="hidden" onChange={(e) => {
-                        const select = document.getElementById('importSourceSelect') as HTMLSelectElement;
-                        if (select && select.value) handleBrowserRestore(e, select.value);
-                      }} />
-                      <button onClick={() => document.getElementById('browserRestoreInput')?.click()} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors">
-                        Import
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Danger Zone */}
-              <section>
-                <h3 className="text-sm font-semibold text-red-500 uppercase tracking-wider mb-4 border-b border-red-100 pb-2">Danger Zone</h3>
-                <div className="space-y-4">
-                  <div className="border border-red-200 rounded-xl p-4 bg-red-50 flex items-center justify-between">
-                    <div className="flex-1 pr-4">
-                      <h4 className="font-medium text-red-900 mb-1">Clear Chat History</h4>
-                      <p className="text-xs text-red-700 leading-relaxed">
-                        Permanently delete all AI chat messages and history.
-                      </p>
-                    </div>
-                    <button onClick={async () => {
-                      if (confirm("Clear all chat history?")) {
-                        await fetch('/api/chat/clear', { method: 'POST' });
-                        setChatMessages([]);
-                      }
-                    }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2 shrink-0">
-                      <Trash2 size={16} /> Clear Chat
-                    </button>
-                  </div>
-                  <div className="border border-red-200 rounded-xl p-4 bg-red-50 flex items-center justify-between">
-                    <div className="flex-1 pr-4">
-                      <h4 className="font-medium text-red-900 mb-1">Clear Local Database</h4>
-                      <p className="text-xs text-red-700 leading-relaxed">
-                        This will permanently delete all bookmarks, tags, and folders <strong>inside MarkFlow</strong>. <br/>
-                        <span className="italic opacity-90">(Don't worry, this will NOT delete the actual bookmarks in your Chrome/Safari browser!)</span>
-                      </p>
-                    </div>
-                    <button onClick={() => {
-                      clearDatabase();
-                      setShowDataModal(false);
-                    }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2 shrink-0">
-                      <Trash2 size={16} /> Clear Database
-                    </button>
-                  </div>
-                </div>
-              </section>
+                  </motion.div>
+                )}
+              </div>
             </div>
           </motion.div>
         </div>
@@ -2423,20 +2532,24 @@ export default function App() {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowSettings(false)}
+        >
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full h-[80vh] overflow-hidden flex flex-col border border-slate-200"
           >
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
-                  <Settings size={20} />
+                  <Settings size={22} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Application Settings</h2>
-                  <p className="text-sm text-slate-500">Configure AI, backups, and appearance</p>
+                  <h2 className="text-xl font-bold text-slate-900">Application Settings</h2>
+                  <p className="text-xs text-slate-500 font-medium tracking-tight">Configure AI, Interface, and Intelligence</p>
                 </div>
               </div>
               <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors">
@@ -2444,319 +2557,391 @@ export default function App() {
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto space-y-8">
-              {/* AI Configuration Section */}
-              <section>
-                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
-                  <Sparkles size={16} className="text-indigo-600" /> AI Configuration
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Selected Gemini Model</label>
-                    <div className="grid grid-cols-1 gap-3">
-                      {GEMINI_MODELS.map(m => (
-                        <button 
-                          key={m.id}
-                          onClick={() => setSelectedModel(m.id)}
-                          className={`flex items-center justify-between p-4 rounded-xl border transition-all text-left ${selectedModel === m.id ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'}`}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Sidebar Tabs */}
+              <div className="w-56 border-r border-slate-100 p-4 space-y-2 bg-slate-50/30">
+                {[
+                  { id: 'ai', label: 'AI Engine', icon: Sparkles },
+                  { id: 'interface', label: 'Interface', icon: LayoutGrid },
+                  { id: 'intelligence', label: 'Intelligence', icon: Brain },
+                  { id: 'developer', label: 'Developer', icon: Terminal },
+                  { id: 'support', label: 'Support', icon: Gift },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveSettingsTab(tab.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                      activeSettingsTab === tab.id 
+                      ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' 
+                      : 'text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    <tab.icon size={18} />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Content Area */}
+              <div className="flex-1 overflow-y-auto p-8">
+                {activeSettingsTab === 'ai' && (
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                    <section>
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Zap size={16} className="text-amber-500" /> Model Selection
+                      </h3>
+                      <div className="grid grid-cols-1 gap-3">
+                        {GEMINI_MODELS.map(m => (
+                          <button 
+                            key={m.id}
+                            onClick={() => setSelectedModel(m.id)}
+                            className={`flex items-center justify-between p-4 rounded-2xl border transition-all text-left group ${selectedModel === m.id ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-500/5' : 'border-slate-100 hover:border-slate-200 bg-white shadow-sm'}`}
+                          >
+                            <div>
+                              <div className="font-bold text-slate-900 text-sm">{m.name}</div>
+                              <div className="text-[11px] text-slate-500">{m.description}</div>
+                            </div>
+                            <div className="text-[10px] font-bold text-indigo-600 bg-indigo-100/50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                              ${m.costPer1M}/1M
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section>
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <ShieldCheck size={16} className="text-emerald-500" /> Security & Connectivity
+                      </h3>
+                      <div className="flex flex-col gap-3">
+                        <button
+                          onClick={handleCheckApiKey}
+                          disabled={apiKeyStatus === 'checking'}
+                          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all shadow-md active:scale-95 ${
+                            apiKeyStatus === 'checking' ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none' :
+                            apiKeyStatus === 'valid' ? 'bg-emerald-500 text-white shadow-emerald-200' :
+                            apiKeyStatus === 'invalid' ? 'bg-rose-500 text-white shadow-rose-200' :
+                            'bg-slate-900 text-white hover:bg-slate-800'
+                          }`}
                         >
-                          <div>
-                            <div className="font-medium text-slate-900">{m.name}</div>
-                            <div className="text-xs text-slate-500">{m.description}</div>
-                          </div>
-                          <div className="text-xs font-mono text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
-                            ${m.costPer1M}/1M tokens
-                          </div>
+                          {apiKeyStatus === 'checking' ? <Loader2 className="animate-spin" size={18} /> : 
+                           apiKeyStatus === 'valid' ? <CheckCircle2 size={18} /> : 
+                           apiKeyStatus === 'invalid' ? <AlertCircle size={18} /> : 
+                           <Key size={18} />}
+                          {apiKeyStatus === 'checking' ? 'Verifying...' : 
+                           apiKeyStatus === 'valid' ? 'Connection Secure' : 
+                           apiKeyStatus === 'invalid' ? 'Key Verification Failed' : 
+                           'Test AI Connection'}
                         </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={handleCheckApiKey}
-                      disabled={apiKeyStatus === 'checking'}
-                      className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all shadow-sm ${
-                        apiKeyStatus === 'checking' ? 'bg-slate-100 text-slate-400 cursor-not-allowed' :
-                        apiKeyStatus === 'valid' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                        apiKeyStatus === 'invalid' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
-                        'bg-slate-900 text-white hover:bg-slate-800'
-                      }`}
-                    >
-                      {apiKeyStatus === 'checking' ? (
-                        <>
-                          <Loader2 className="animate-spin" size={18} />
-                          Verifying API Key...
-                        </>
-                      ) : apiKeyStatus === 'valid' ? (
-                        <>
-                          <CheckCircle2 size={18} />
-                          API Key is Working!
-                        </>
-                      ) : apiKeyStatus === 'invalid' ? (
-                        <>
-                          <AlertCircle size={18} />
-                          Key Check Failed
-                        </>
-                      ) : (
-                        <>
-                          <ShieldCheck size={18} />
-                          Test API Key Connection
-                        </>
-                      )}
-                    </button>
-                    {apiKeyError && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-xs text-rose-600 bg-rose-50 p-3 rounded-lg border border-rose-100 flex items-start gap-2"
-                      >
-                        <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                        <span>{apiKeyError}</span>
-                      </motion.div>
-                    )}
-                  </div>
-
-                  <div className="bg-slate-950 rounded-xl p-5 text-slate-100 border border-slate-800 shadow-inner">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <Terminal size={14} /> AI Usage Stats (Geek Mode)
-                    </h4>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold">Total Tokens</div>
-                        <div className="text-lg font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">{aiStats.totalTokens.toLocaleString()}</div>
+                        
+                        {apiKeyError && (
+                          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-[11px] text-rose-600 bg-rose-50 p-4 rounded-xl border border-rose-100 flex items-start gap-3">
+                            <AlertTriangle size={16} className="shrink-0" />
+                            <span>{apiKeyError}</span>
+                          </motion.div>
+                        )}
                       </div>
-                      <div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold">Est. Cost</div>
-                        <div className="text-lg font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">${aiStats.totalCost.toFixed(4)}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold">Requests</div>
-                        <div className="text-lg font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">{aiStats.requestCount}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
+                    </section>
 
-              {/* Matrix Logo Customization */}
-              <section>
-                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
-                  <ImageIcon size={16} className="text-emerald-600" /> Matrix Logo Customization
-                </h3>
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                  <div className="flex items-center gap-6">
-                    <div className="w-24 h-24 bg-black rounded-xl border-2 border-emerald-500/30 flex items-center justify-center overflow-hidden relative group">
-                      {customMatrixLogo ? (
-                        <img src={customMatrixLogo} alt="Custom Logo" className="w-full h-full object-contain filter grayscale sepia hue-rotate-[70deg] saturate-[500%] brightness-[0.8]" />
-                      ) : (
-                        <div className="text-emerald-500 font-mono text-xs text-center p-2">NO LOGO</div>
-                      )}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <button 
-                          onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = 'image/png';
-                            input.onchange = (e: any) => {
-                              const file = e.target.files[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (ev) => {
-                                  const base64 = ev.target?.result as string;
-                                  setCustomMatrixLogo(base64);
-                                  localStorage.setItem('custom_matrix_logo', base64);
+                    <section className="bg-slate-950 rounded-3xl p-6 text-white border border-slate-800 shadow-xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Brain size={80} />
+                      </div>
+                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                        <Activity size={14} className="text-indigo-400" /> Neural Usage Statistics
+                      </h4>
+                      <div className="grid grid-cols-3 gap-8 relative z-10">
+                        <div>
+                          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Total Tokens</div>
+                          <div className="text-2xl font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]">{aiStats.totalTokens.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Est. Cost</div>
+                          <div className="text-2xl font-mono text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.4)]">${aiStats.totalCost.toFixed(4)}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Queries</div>
+                          <div className="text-2xl font-mono text-purple-400 drop-shadow-[0_0_8px_rgba(192,132,252,0.4)]">{aiStats.requestCount}</div>
+                        </div>
+                      </div>
+                    </section>
+                  </motion.div>
+                )}
+
+                {activeSettingsTab === 'interface' && (
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                    <section>
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Medal size={16} className="text-purple-500" /> System Themes
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: 'light', label: 'Light', icon: <Info size={18} /> },
+                          { id: 'dark', label: 'Dark', icon: <Clock size={18} /> },
+                          { id: 'matrix', label: 'Matrix', icon: <Terminal size={18} /> },
+                          { id: 'ranger', label: 'Ranger', icon: <img src="/ranger.png" className="w-5 h-5 rounded" /> }
+                        ].map(t => (
+                          <button 
+                            key={t.id} 
+                            onClick={() => setTheme(t.id as any)} 
+                            className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${theme === t.id ? 'border-indigo-600 bg-indigo-50 shadow-md ring-4 ring-indigo-500/5' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                          >
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${theme === t.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                              {t.icon}
+                            </div>
+                            <span className="text-sm font-bold text-slate-700">{t.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <ImageIcon size={16} className="text-emerald-500" /> Matrix Customization
+                      </h3>
+                      <div className="flex items-center gap-6">
+                        <div className="w-20 h-20 bg-black rounded-2xl border-2 border-emerald-500/30 flex items-center justify-center overflow-hidden relative group shadow-lg shadow-emerald-500/10">
+                          {customMatrixLogo ? (
+                            <img src={customMatrixLogo} alt="Custom Logo" className="w-full h-full object-contain filter grayscale sepia hue-rotate-[70deg] saturate-[500%] brightness-[0.8]" />
+                          ) : (
+                            <div className="text-emerald-500 font-mono text-[10px] text-center p-2 uppercase font-bold">No Data</div>
+                          )}
+                          <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button 
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/png';
+                                input.onchange = (e: any) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => {
+                                      const base64 = ev.target?.result as string;
+                                      setCustomMatrixLogo(base64);
+                                      localStorage.setItem('custom_matrix_logo', base64);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
                                 };
-                                reader.readAsDataURL(file);
-                              }
-                            };
-                            input.click();
-                          }}
-                          className="text-white text-[10px] font-bold uppercase"
-                        >
-                          Change
-                        </button>
+                                input.click();
+                              }}
+                              className="text-white text-[9px] font-black uppercase tracking-tighter"
+                            >
+                              Upload
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-slate-900 text-sm mb-1">Matrix-ify Your Brand</h4>
+                          <p className="text-[11px] text-slate-500 mb-4 leading-relaxed italic">Upload a PNG and we'll apply digital rain filters.</p>
+                          <div className="flex gap-2">
+                            <button onClick={() => {
+                              if (!customMatrixLogo) return;
+                              const link = document.createElement('a');
+                              link.href = customMatrixLogo;
+                              link.download = 'markflow-matrix-logo.png';
+                              link.click();
+                            }} disabled={!customMatrixLogo} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm active:scale-95">
+                              Download
+                            </button>
+                            <button onClick={() => {
+                              setCustomMatrixLogo(null);
+                              localStorage.removeItem('custom_matrix_logo');
+                            }} disabled={!customMatrixLogo} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-bold hover:bg-rose-100 transition-all border border-rose-100 disabled:opacity-50 active:scale-95">
+                              Reset
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-slate-900 mb-1">Matrix-ify Your Logo</h4>
-                      <p className="text-xs text-slate-500 mb-4">Upload a PNG and we'll apply the Matrix digital rain filter. You can even download the result!</p>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => {
-                            if (!customMatrixLogo) return;
-                            const link = document.createElement('a');
-                            link.href = customMatrixLogo;
-                            link.download = 'markflow-matrix-logo.png';
-                            link.click();
-                          }}
-                          disabled={!customMatrixLogo}
-                          className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50"
-                        >
-                          <Download size={14} /> Download
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setCustomMatrixLogo(null);
-                            localStorage.removeItem('custom_matrix_logo');
-                          }}
-                          disabled={!customMatrixLogo}
-                          className="px-4 py-2 bg-white border border-slate-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-50"
-                        >
-                          <Trash2 size={14} /> Reset
-                        </button>
+                    </section>
+                  </motion.div>
+                )}
+
+                {activeSettingsTab === 'intelligence' && (
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                    <section>
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Medal size={16} className="text-indigo-600" /> User Personalization
+                      </h3>
+                      <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Identify Yourself</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            value={userName}
+                            onChange={(e) => {
+                              setUserName(e.target.value);
+                              localStorage.setItem('user_name', e.target.value);
+                            }}
+                            placeholder="Your name (e.g. Commander David)"
+                            className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm"
+                          />
+                        </div>
+                        <p className="text-[9px] text-slate-400 mt-2 italic px-1">This allows the AI to address you by name and provide a more personalized command experience.</p>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
+                    </section>
 
-              {/* Smart Assistant Section */}
-              <section>
-                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
-                  <MessageSquare size={16} className="text-blue-600" /> Smart Assistant
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <div>
-                      <h4 className="font-medium text-slate-900">Interactive Auto-Prompt</h4>
-                      <p className="text-xs text-slate-500">Gemini will offer help if you're idle for {autoPromptDelay}s.</p>
-                    </div>
-                    <button 
-                      onClick={() => {
-                        const newVal = !autoPromptEnabled;
-                        setAutoPromptEnabled(newVal);
-                        localStorage.setItem('auto_prompt_enabled', String(newVal));
-                      }}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${autoPromptEnabled ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}
-                    >
-                      {autoPromptEnabled ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-                      {autoPromptEnabled ? 'Enabled' : 'Disabled'}
-                    </button>
-                  </div>
-                  {autoPromptEnabled && (
-                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                      <label className="block text-xs font-bold text-blue-700 uppercase mb-2">Prompt Delay (seconds)</label>
-                      <input 
-                        type="range" 
-                        min="5" 
-                        max="60" 
-                        step="5"
-                        value={autoPromptDelay}
-                        onChange={(e) => setAutoPromptDelay(Number(e.target.value))}
-                        className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                      />
-                      <div className="flex justify-between text-[10px] text-blue-500 mt-1 font-mono">
-                        <span>5s</span>
-                        <span>{autoPromptDelay}s</span>
-                        <span>60s</span>
+                    <section>
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Brain size={16} className="text-indigo-600" /> Proactive Assistant
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-5 bg-slate-50 rounded-3xl border border-slate-100">
+                          <div>
+                            <h4 className="font-bold text-slate-900 text-sm mb-1">Inactivity AI Prompt</h4>
+                            <p className="text-[11px] text-slate-500 leading-relaxed">Gemini will proactively offer help if you are idle for a specific time.</p>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              const newVal = !autoPromptEnabled;
+                              setAutoPromptEnabled(newVal);
+                              localStorage.setItem('auto_prompt_enabled', String(newVal));
+                            }}
+                            className={`px-5 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 ${
+                              autoPromptEnabled ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-200 text-slate-600'
+                            }`}
+                          >
+                            {autoPromptEnabled ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                            {autoPromptEnabled ? 'Enabled' : 'Disabled'}
+                          </button>
+                        </div>
+                        
+                        {autoPromptEnabled && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100"
+                          >
+                            <div className="flex justify-between items-center mb-4">
+                              <label className="text-[10px] font-black text-indigo-700 uppercase tracking-[0.2em]">Inactivity Delay</label>
+                              <span className="text-xs font-mono font-bold text-indigo-600 bg-white px-3 py-1 rounded-xl border border-indigo-100 shadow-sm">{autoPromptDelay}s</span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="5" 
+                              max="60" 
+                              step="5"
+                              value={autoPromptDelay}
+                              onChange={(e) => setAutoPromptDelay(Number(e.target.value))}
+                              className="w-full h-2 bg-indigo-200 rounded-full appearance-none cursor-pointer accent-indigo-600 mb-3"
+                            />
+                            <div className="flex justify-between text-[9px] text-indigo-400 font-black uppercase tracking-tighter">
+                              <span>Reactive (5s)</span>
+                              <span>Balanced Engine</span>
+                              <span>Patient (60s)</span>
+                            </div>
+                          </motion.div>
+                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
-              </section>
+                    </section>
 
-              {/* Data & Backup Section */}
-              <section>
-                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
-                  <Database size={16} className="text-emerald-600" /> Data & Backups
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <div>
-                      <h4 className="font-medium text-slate-900">Automatic Hourly Backups</h4>
-                      <p className="text-xs text-slate-500">Saves a local snapshot of your database every hour.</p>
-                    </div>
-                    <button 
-                      onClick={() => setAutoBackupEnabled(!autoBackupEnabled)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${autoBackupEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}
-                    >
-                      {autoBackupEnabled ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-                      {autoBackupEnabled ? 'Enabled' : 'Disabled'}
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <div>
-                      <h4 className="font-medium text-slate-900">Manage Data</h4>
-                      <p className="text-xs text-slate-500">Import, export, and clear your database.</p>
-                    </div>
-                    <button 
-                      onClick={() => {
-                        setShowSettings(false);
-                        setShowDataModal(true);
-                      }}
-                      className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors"
-                    >
-                      Open Data Manager
-                    </button>
-                  </div>
-                </div>
-              </section>
+                    <section className="bg-amber-50 rounded-3xl p-6 border border-amber-100 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-black text-amber-800 flex items-center gap-2 uppercase tracking-tight">
+                          <Trophy size={18} /> Librarian Standing
+                        </h3>
+                        <span className="text-[10px] font-black text-amber-600 bg-white px-3 py-1 rounded-full border border-amber-200 uppercase tracking-widest shadow-sm">
+                          Tier {level}
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-[10px] font-black text-amber-700 uppercase tracking-widest">
+                          <span>Next Rank Progress</span>
+                          <span>{xp % 100} / 100 XP</span>
+                        </div>
+                        <div className="w-full bg-white/50 h-4 rounded-full overflow-hidden border border-amber-200 p-1">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${xp % 100}%` }}
+                            className="h-full bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.4)] transition-all duration-1000"
+                          />
+                        </div>
+                        <p className="text-[10px] text-amber-600 italic font-medium leading-relaxed">Continue organizing and enriching your library to earn experience and unlock new titles.</p>
+                      </div>
+                    </section>
+                  </motion.div>
+                )}
 
-              {/* Librarian Level Section */}
-              <section className="bg-amber-50 rounded-2xl p-6 border border-amber-100">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-amber-800 flex items-center gap-2">
-                    <Trophy size={16} /> Librarian Level
-                  </h3>
-                  <span className="text-xs font-bold text-amber-600 bg-white px-2 py-1 rounded-full border border-amber-200">
-                    LVL {level}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold text-amber-700 uppercase tracking-tighter">
-                    <span>Progress to Level {level + 1}</span>
-                    <span>{xp % 100} / 100 XP</span>
-                  </div>
-                  <div className="w-full bg-amber-200/50 h-3 rounded-full overflow-hidden border border-amber-200">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${xp % 100}%` }}
-                      className="h-full bg-amber-500 shadow-inner transition-all duration-500"
-                    />
-                  </div>
-                  <p className="text-[10px] text-amber-600 italic">Keep organizing to earn XP and unlock new curator titles!</p>
-                </div>
-              </section>
+                {activeSettingsTab === 'developer' && (
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <section>
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Terminal size={16} className="text-slate-700" /> Developer Quickstart
+                      </h3>
+                      <div className="bg-slate-900 text-slate-300 p-6 rounded-3xl font-mono text-[11px] overflow-x-auto shadow-2xl border border-slate-800">
+                        <p className="text-emerald-500 mb-3 font-bold"># MarkFlow v3.4.0 High-Performance Engine</p>
+                        <p className="mb-1 text-slate-500 italic"># 1. Acquire source</p>
+                        <p className="mb-3">git clone https://github.com/davidtkeane/markflow.git</p>
+                        <p className="mb-1 text-slate-500 italic"># 2. Inject dependencies</p>
+                        <p className="mb-3">cd markflow && npm install</p>
+                        <p className="mb-1 text-slate-500 italic"># 3. Secure API credentials</p>
+                        <p className="mb-3">echo 'VITE_GEMINI_API_KEY="your_key_here"' {'>'} .env</p>
+                        <p className="mb-1 text-slate-500 italic"># 4. Ignite environment</p>
+                        <p>npm run dev</p>
+                      </div>
+                      <div className="mt-6 flex items-center justify-center gap-2">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed text-center">
+                          Engine Optimized for MacBook M3 Pro • Node.js v18+ Recommended
+                        </p>
+                      </div>
+                    </section>
+                  </motion.div>
+                )}
 
-              {/* Appearance Section */}
-              <section>
-                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
-                  <LayoutGrid size={16} className="text-purple-600" /> Appearance
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <button onClick={() => setTheme('light')} className={`p-4 rounded-xl border transition-all ${theme === 'light' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
-                    <div className="flex justify-center mb-2"><Info size={20} className="text-slate-400" /></div>
-                    <div className="text-xs font-medium text-center">Light</div>
-                  </button>
-                  <button onClick={() => setTheme('dark')} className={`p-4 rounded-xl border transition-all ${theme === 'dark' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
-                    <div className="flex justify-center mb-2"><Clock size={20} className="text-slate-400" /></div>
-                    <div className="text-xs font-medium text-center">Dark</div>
-                  </button>
-                  <button onClick={() => setTheme('matrix')} className={`p-4 rounded-xl border transition-all ${theme === 'matrix' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
-                    <div className="flex justify-center mb-2"><Terminal size={20} className="text-slate-400" /></div>
-                    <div className="text-xs font-medium text-center">Matrix</div>
-                  </button>
-                  <button onClick={() => setTheme('ranger')} className={`p-4 rounded-xl border transition-all ${theme === 'ranger' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
-                    <div className="flex justify-center mb-2">
-                      <img src="/ranger.png" alt="Ranger Logo" className="w-8 h-8 object-cover rounded-lg" />
-                    </div>
-                    <div className="text-xs font-medium text-center">Ranger</div>
-                  </button>
-                </div>
-              </section>
+                {activeSettingsTab === 'support' && (
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8 text-center">
+                    <section>
+                      <div className="w-16 h-16 bg-pink-100 text-pink-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <Gift size={32} />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-2 tracking-tight">Community Support</h3>
+                      <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed mb-8">
+                        MarkFlow is free and open-source. If you find it valuable, consider supporting the continued development of this project.
+                      </p>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md mx-auto">
+                        <a 
+                          href="https://buymeacoffee.com/davidtkeane" 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="group bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:border-amber-200 hover:shadow-lg active:scale-95"
+                        >
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                              <Coffee size={20} />
+                            </div>
+                            <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Buy me a Coffee</span>
+                          </div>
+                        </a>
 
-              {/* Local Setup Guide (Moved here) */}
-              <section>
-                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Developer Info</h3>
-                <div className="bg-slate-900 text-slate-300 p-5 rounded-xl font-mono text-xs overflow-x-auto">
-                  <p className="text-slate-500"># Local Setup Guide (MacBook M3 Pro)</p>
-                  <p>cd path/to/your/project</p>
-                  <p>npm install</p>
-                  <p>echo 'VITE_GEMINI_API_KEY="..."' {'>'} .env</p>
-                  <p>npm run dev</p>
-                </div>
-              </section>
+                        <a 
+                          href="https://h3llcoin.com/" 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="group bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:border-orange-200 hover:shadow-lg active:scale-95"
+                        >
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600 group-hover:bg-[#ff5722] group-hover:text-white transition-colors">
+                              <Zap size={20} />
+                            </div>
+                            <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Buy me a H3llCoin</span>
+                          </div>
+                        </a>
+                      </div>
+                    </section>
+
+                    <section className="pt-8 border-t border-slate-100">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">Official Project Credits</h4>
+                      <p className="text-xs text-slate-500 font-medium">
+                        Architected by Commander David <br/>
+                        Engines optimized by the AI Trinity (Gemini, Claude, Ollama)
+                      </p>
+                    </section>
+                  </motion.div>
+                )}
+              </div>
             </div>
           </motion.div>
         </div>
@@ -2774,71 +2959,163 @@ export default function App() {
           >
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white">
               <div className="flex items-center gap-2">
-                <MessageSquare size={20} />
+                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                  <MessageSquare size={18} />
+                </div>
                 <div>
-                  <h2 className="font-semibold leading-none">MarkFlow AI Chat</h2>
-                  <span className="text-[10px] opacity-75 uppercase tracking-wider">
+                  <h2 className="font-semibold text-sm leading-none">MarkFlow AI</h2>
+                  <span className="text-[9px] opacity-75 uppercase tracking-widest font-bold">
                     {GEMINI_MODELS.find(m => m.id === selectedModel)?.name || 'Gemini'}
                   </span>
                 </div>
               </div>
-              <button onClick={() => setShowChat(false)} className="p-1 hover:bg-indigo-500 rounded-md transition-colors">
-                <XCircle size={20} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={async () => {
+                    if (confirm("Clear all chat history?")) {
+                      await fetch('/api/chat/clear', { method: 'POST' });
+                      setChatMessages([]);
+                    }
+                  }}
+                  className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                  title="Clear Chat"
+                >
+                  <Trash2 size={16} />
+                </button>
+                <button 
+                  onClick={() => {
+                    const text = chatMessages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `markflow-chat-${new Date().toISOString().split('T')[0]}.txt`;
+                    a.click();
+                  }}
+                  className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+                  title="Export Chat"
+                >
+                  <Download size={16} />
+                </button>
+                <button onClick={() => setShowChat(false)} className="p-1.5 hover:bg-white/10 rounded-md transition-colors ml-1">
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 scroll-smooth custom-scrollbar">
               {chatMessages.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Sparkles size={24} />
+                <div className="text-center py-8">
+                  <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                    <Brain size={28} />
                   </div>
-                  <h3 className="text-slate-900 font-medium mb-1">Ask anything!</h3>
-                  <p className="text-slate-500 text-xs px-8">
-                    "Find my recipes," "Move all GitHub links to a Tech folder," or "Summarize my recent saves."
+                  <h3 className="text-slate-900 font-bold text-sm mb-1 uppercase tracking-tight">Intelligence Assistant</h3>
+                  <p className="text-slate-500 text-[11px] px-8 leading-relaxed mb-6">
+                    I can search your library, summarize bookmarks, and help you organize your collections.
                   </p>
+                  
+                  <div className="px-4 space-y-2">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-left ml-1 mb-2">Try asking:</p>
+                    {[
+                      { icon: <Search size={12} />, label: "Find recipes and food links", text: "Search for all my recipes and food bookmarks." },
+                      { icon: <AlertTriangle size={12} />, label: "Check for broken links", text: "Find all dead or broken links in my library." },
+                      { icon: <Folder size={12} />, label: "Organize my tech folder", text: "Suggest sub-folders for my tech bookmarks." },
+                      { icon: <Tag size={12} />, label: "Show most common tags", text: "Analyze my bookmarks and tell me which tags I use most." }
+                    ].map((s, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => {
+                          setChatInput(s.text);
+                          handleChat(s.text);
+                        }}
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-[11px] text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-left flex items-center gap-2 group shadow-sm"
+                      >
+                        <span className="text-indigo-500 group-hover:scale-110 transition-transform">{s.icon}</span>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
+
               {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-800 border border-slate-200 shadow-sm'}`}>
+                <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div className="flex items-center gap-2 mb-1 px-1">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                      {msg.role === 'user' ? (userName || 'You') : 'MarkFlow'}
+                    </span>
+                    {msg.timestamp && (
+                      <span className="text-[8px] text-slate-300 font-mono">{msg.timestamp}</span>
+                    )}
+                  </div>
+                  <div className={`group relative max-w-[90%] p-3 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === 'user' 
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' 
+                    : 'bg-white text-slate-800 border border-slate-100 shadow-sm'
+                  }`}>
                     {msg.content}
+                    
+                    {msg.role === 'model' && (
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(msg.content);
+                          alert("Copied to clipboard!");
+                        }}
+                        className="absolute -right-8 top-0 p-1 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-all"
+                        title="Copy text"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
+              
               {isChatting && (
-                <div className="flex justify-start">
-                  <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2">
-                    <Loader2 size={16} className="animate-spin text-indigo-600" />
-                    <span className="text-xs text-slate-500">Thinking...</span>
+                <div className="flex flex-col items-start animate-pulse">
+                  <div className="flex items-center gap-2 mb-1 px-1">
+                    <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">MarkFlow Thinking</span>
+                  </div>
+                  <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                   </div>
                 </div>
               )}
+              
+              <div id="chat-bottom"></div>
             </div>
 
-            <div className="p-4 border-t border-slate-100 bg-white">
+            <div className="p-4 border-t border-slate-100 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
               <form 
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleChat(chatInput);
                 }}
-                className="flex gap-2"
+                className="flex items-center gap-2"
               >
-                <input 
-                  type="text" 
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
+                <div className="flex-1 relative group">
+                  <input 
+                    type="text" 
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Ask about your library..."
+                    className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all placeholder:text-slate-400"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-400 transition-colors">
+                    <Zap size={14} fill="currentColor" className="opacity-50" />
+                  </div>
+                </div>
                 <button 
                   type="submit"
                   disabled={isChatting || !chatInput.trim()}
-                  className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  className="w-10 h-10 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 disabled:opacity-50 disabled:shadow-none flex items-center justify-center shrink-0 active:scale-95"
                 >
-                  <Send size={18} />
+                  <Send size={16} />
                 </button>
               </form>
+              <p className="text-[9px] text-slate-400 text-center mt-3 font-medium uppercase tracking-widest">Powered by Gemini Frontier Intelligence</p>
             </div>
           </motion.div>
         )}
@@ -2866,48 +3143,83 @@ export default function App() {
       <AnimatePresence>
         {showAutoPrompt && autoPromptEnabled && !showChat && (
           <motion.div 
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-md px-4"
+            initial={{ y: 100, opacity: 0, x: "-50%" }}
+            animate={{ y: 0, opacity: 1, x: "-50%" }}
+            exit={{ y: 100, opacity: 0, x: "-50%" }}
+            className="fixed bottom-8 left-1/2 z-[100] w-full max-w-md px-4"
           >
-            <div className="bg-slate-900 text-white rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
-              <div className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center shrink-0 animate-pulse">
-                  <Sparkles size={24} />
+            <div className={`rounded-3xl shadow-2xl overflow-hidden border transition-colors ${
+              theme === 'ranger' ? 'bg-[#1a1c1e] border-[#8a9099] text-white shadow-black/50' :
+              theme === 'matrix' ? 'bg-black border-emerald-500/50 text-emerald-500 shadow-emerald-500/10' :
+              theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' :
+              'bg-white border-slate-200 text-slate-900'
+            }`}>
+              <div className="p-5 flex items-center gap-4 relative">
+                {/* One-click Close Button */}
+                <button 
+                  onClick={() => setShowAutoPrompt(false)}
+                  className={`absolute top-3 right-3 p-1 rounded-full transition-colors ${
+                    theme === 'matrix' ? 'hover:bg-emerald-500/10 text-emerald-700 hover:text-emerald-400' :
+                    'hover:bg-black/5 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white'
+                  }`}
+                  title="Close"
+                >
+                  <X size={16} />
+                </button>
+
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg animate-pulse ${
+                  theme === 'matrix' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-indigo-600 text-white shadow-indigo-500/20'
+                }`}>
+                  <Brain size={24} />
                 </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold">Need a hand with your library?</h4>
-                  <p className="text-xs text-slate-400">I can help you find, move, or summarize anything.</p>
+                <div className="flex-1 pr-4">
+                  <h4 className={`text-xs font-bold uppercase tracking-widest mb-1 ${
+                    theme === 'matrix' ? 'text-emerald-400' : 'text-indigo-400'
+                  }`}>MarkFlow Intelligence</h4>
+                  <h4 className="text-sm font-bold mb-0.5 leading-tight">Need help organizing?</h4>
+                  <p className={`text-[11px] leading-relaxed ${
+                    theme === 'matrix' ? 'text-emerald-600' : 'text-slate-400'
+                  }`}>I can summarize your recent saves or find specific links.</p>
                 </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => {
-                      setShowAutoPrompt(false);
-                      setAutoPromptDismissedUntil(Date.now() + 5 * 60 * 1000);
-                    }}
-                    className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
-                    title="Dismiss for 5 minutes"
-                  >
-                    <XCircle size={20} />
-                  </button>
+                <div className="flex flex-col gap-2 shrink-0">
                   <button 
                     onClick={() => {
                       setShowAutoPrompt(false);
                       setShowChat(true);
                     }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-bold transition-colors"
+                    className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all shadow-md active:scale-95 ${
+                      theme === 'matrix' ? 'bg-emerald-600 hover:bg-emerald-500 text-black shadow-emerald-500/20' :
+                      'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20'
+                    }`}
                   >
                     Chat Now
                   </button>
+                  <button 
+                    onClick={() => {
+                      setShowAutoPrompt(false);
+                      setAutoPromptDismissedUntil(Date.now() + 5 * 60 * 1000);
+                    }}
+                    className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all border active:scale-95 ${
+                      theme === 'matrix' ? 'bg-white/5 hover:bg-white/10 text-emerald-500 border-emerald-500/20' :
+                      'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
+                    }`}
+                  >
+                    Snooze (5m)
+                  </button>
                 </div>
               </div>
-              <div className="h-1 bg-slate-800 w-full">
+              
+              {/* Refined Progress Bar */}
+              <div className={`h-1 w-full relative ${
+                theme === 'matrix' ? 'bg-emerald-900/20' : 'bg-black/5 dark:bg-white/5'
+              }`}>
                 <motion.div 
                   initial={{ width: "100%" }}
                   animate={{ width: "0%" }}
                   transition={{ duration: 5, ease: "linear" }}
-                  className="h-full bg-indigo-500"
+                  className={`h-full shadow-[0_0_8px_rgba(99,102,241,0.5)] ${
+                    theme === 'matrix' ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-600 to-purple-500'
+                  }`}
                 />
               </div>
             </div>
