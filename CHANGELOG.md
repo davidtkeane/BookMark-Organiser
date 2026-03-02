@@ -5,6 +5,14 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.0] - 2026-03-02
+
+### Changed
+- **High-Contrast Wiki Callouts**: Replaced low-contrast alert boxes in the Wiki with solid, high-fidelity tactical cards.
+    - **Security (Green)**: Now uses a deep emerald background with white text for maximum readability.
+    - **Warnings (Orange)**: Updated amber alerts to solid orange with white text.
+    - **Troubleshooting (Red)**: Connection failures are now highlighted in deep rose with white text for immediate visual priority.
+
 ## [3.12.0] - 2026-03-02
 
 ### Added

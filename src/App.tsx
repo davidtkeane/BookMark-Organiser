@@ -2270,19 +2270,19 @@ export default function App() {
                               <li>Link a <strong>Billing Account</strong> to your project (required for Cloud API).</li>
                               <li>Add the key to your <code>.env</code> file as <code>VITE_GEMINI_API_KEY</code>.</li>
                             </ol>
-                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-xs text-amber-800 italic">
-                              Note: Flash models (1.5/2.0/3.0) are extremely cheap and often fall within a free tier, while Pro models may incur standard usage fees.
+                            <div className="bg-amber-600 p-4 rounded-xl border border-amber-700 text-xs text-white font-medium shadow-sm">
+                              <span className="font-black uppercase tracking-widest mr-2">Note:</span> Flash models (1.5/2.0/3.0) are extremely cheap and often fall within a free tier, while Pro models may incur standard usage fees.
                             </div>
                           </section>
 
-                          <section className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
-                            <h3 className="text-lg font-bold text-emerald-900 mb-3 flex items-center gap-2">
-                              <ShieldCheck className="text-emerald-600" size={20} /> Security & Restrictions
+                          <section className="bg-emerald-600 p-6 rounded-2xl border border-emerald-700 shadow-md">
+                            <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                              <ShieldCheck className="text-emerald-100" size={20} /> Security & Restrictions
                             </h3>
-                            <p className="text-emerald-800 text-sm leading-relaxed mb-4">
+                            <p className="text-emerald-50 text-sm leading-relaxed mb-4">
                               To prevent unauthorized usage of your billing account, you should restrict your API key immediately:
                             </p>
-                            <ul className="list-disc pl-5 space-y-2 text-sm text-emerald-900 mb-4">
+                            <ul className="list-disc pl-5 space-y-2 text-sm text-emerald-50 mb-4 font-medium">
                               <li><strong>API Restriction:</strong> Select "Restrict key" and choose only <strong>Generative Language API</strong>.</li>
                               <li><strong>Application Restriction:</strong> 
                                 <ul className="list-circle pl-5 mt-1 space-y-1">
@@ -2295,7 +2295,7 @@ export default function App() {
                               href="https://cloud.google.com/docs/authentication/api-keys#adding_restrictions_to_api_keys" 
                               target="_blank" 
                               rel="noreferrer" 
-                              className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 underline"
+                              className="inline-flex items-center gap-2 text-xs font-black text-white hover:text-emerald-100 transition-colors underline decoration-emerald-300"
                             >
                               Official Setup & Security Guide <ChevronRight size={14} />
                             </a>
@@ -2312,8 +2312,9 @@ export default function App() {
                             <p className="text-slate-600 text-sm leading-relaxed mb-4">
                               Magic Sync scans your MacBook for all installed browsers (Chrome, Safari, Brave, Firefox) and imports everything into one master library.
                             </p>
-                            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-xs text-amber-800 italic">
-                              Warning: This will skip bookmarks that already exist in your library to prevent duplicates.
+                            <div className="bg-amber-600 p-4 rounded-xl border border-amber-700 text-xs text-white font-medium shadow-sm flex items-start gap-2">
+                              <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                              <span><span className="font-black uppercase tracking-widest mr-1">Warning:</span> This will skip bookmarks that already exist in your library to prevent duplicates.</span>
                             </div>
                           </section>
       
@@ -2330,17 +2331,16 @@ export default function App() {
       
                       {activeHelpTab === 'trouble' && (
                         <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                          <section className="bg-rose-50 p-6 rounded-2xl border border-rose-100">
-                            <h3 className="text-lg font-bold text-rose-900 mb-3 flex items-center gap-2">
-                              <AlertTriangle className="text-rose-600" size={20} /> Connection Failed?
-                            </h3>
-                            <ul className="list-disc pl-5 space-y-3 text-sm text-rose-800">
-                              <li><strong>Check API Key:</strong> Ensure it starts with <code>AIza</code> and is correctly saved in your <code>.env</code> file.</li>
-                              <li><strong>Restart Server:</strong> After editing <code>.env</code>, you must restart the app (<code>npm run dev</code>).</li>
-                              <li><strong>Ad-Blockers:</strong> Some browsers block <code>generativelanguage.googleapis.com</code>. Try disabling your ad-blocker.</li>
-                            </ul>
-                          </section>
-      
+                                                  <section className="bg-rose-600 p-6 rounded-2xl border border-rose-700 shadow-md">
+                                                    <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                                                      <AlertTriangle className="text-rose-100" size={20} /> Connection Failed?
+                                                    </h3>
+                                                    <ul className="list-disc pl-5 space-y-3 text-sm text-rose-50 font-medium">
+                                                      <li><strong>Check API Key:</strong> Ensure it starts with <code>AIza</code> and is correctly saved in your <code>.env</code> file.</li>
+                                                      <li><strong>Restart Server:</strong> After editing <code>.env</code>, you must restart the app (<code>npm run dev</code>).</li>
+                                                      <li><strong>Ad-Blockers:</strong> Some browsers block <code>generativelanguage.googleapis.com</code>. Try disabling your ad-blocker.</li>
+                                                    </ul>
+                                                  </section>      
                           <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
                             <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
                               <Chrome className="text-indigo-600" size={20} /> M3 Mac Permissions
