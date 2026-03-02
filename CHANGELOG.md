@@ -5,6 +5,24 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-03-02
+
+### Added
+- **Bookmark Intelligence Editor**: Replaced "Geek Mode" with a powerful, multi-tabbed bookmark editor.
+    - **Edit Content Tab**: Directly modify titles, URLs, summaries, tags, and keywords.
+    - **Metadata Tab**: View historical save dates, origin sources, and raw JSON data.
+    - **AI Insights Tab**: Generate deep keywords and smart tags using Gemini AI.
+- **AI Keyword Generation**: New `generateKeywordsWithAI` service to analyze bookmark content and suggest descriptive keywords.
+- **Interactive Metadata**: Added a "Copy JSON" feature and "Refresh Icon" tool within the editor.
+- **Gamification Update**: Awarding XP for saving manual edits and generating AI insights.
+
+## [2.14.0] - 2026-03-02
+
+### Added
+- **Title Editing**: Edit bookmark titles directly in the detail view.
+- **Auto-Fetch Title**: New "Magic Wand" button to fetch the page title from the URL.
+- **Grid Spacing Fix**: Standard view now uses full width for columns with improved horizontal spacing.
+
 ## [2.13.0] - 2026-03-02
 
 ### Added

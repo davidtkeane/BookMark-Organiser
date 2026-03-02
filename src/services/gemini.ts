@@ -134,3 +134,53 @@ export async function semanticSearchBookmarks(query: string, bookmarks: any[], m
 
   return JSON.parse(response.text);
 }
+
+export async function generateKeywordsWithAI(bookmark: any, model: string = "gemini-3-flash-preview") {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API key is missing. Please add it to your .env file.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+    You are an expert content analyzer. For the following bookmark, generate:
+    1. A list of 5-10 highly descriptive keywords that capture the essence of the content.
+    2. A list of 3-5 relevant tags.
+    
+    Bookmark:
+    Title: ${bookmark.title}
+    URL: ${bookmark.url}
+    Summary: ${bookmark.summary || 'No summary available'}
+    
+    Return the result as JSON.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: model,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          keywords: { 
+            type: Type.ARRAY, 
+            items: { type: Type.STRING } 
+          },
+          tags: { 
+            type: Type.ARRAY, 
+            items: { type: Type.STRING } 
+          }
+        },
+        required: ["keywords", "tags"]
+      }
+    }
+  });
+
+  if (!response.text) {
+    throw new Error("No response from Gemini");
+  }
+
+  return JSON.parse(response.text);
+}

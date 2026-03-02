@@ -227,6 +227,27 @@ async function startServer() {
     }
   });
 
+  // Fetch Title endpoint
+  app.post("/api/fetch-title", async (req, res) => {
+    const { url } = req.body;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch(url, { 
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MarkFlowBot/1.0)' },
+        signal: controller.signal 
+      });
+      clearTimeout(timeoutId);
+      const html = await response.text();
+      
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      const title = titleMatch ? titleMatch[1].trim() : null;
+      res.json({ title });
+    } catch (error) {
+      res.json({ title: null });
+    }
+  });
+
   // Wayback Machine endpoint
   app.post("/api/wayback", async (req, res) => {
     const { url } = req.body;

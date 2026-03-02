@@ -3,6 +3,7 @@ import {
   Folder, FolderOpen, Link as LinkIcon, AlertTriangle, Trash2, Search, 
   Activity, Copy, Sparkles, Settings, ChevronRight, ChevronDown, 
   MoreVertical, CheckCircle2, XCircle, Loader2, Info, Download, UploadCloud, ListTodo,
+  Check, X, Edit3, Tag, Key, Save, FileText, History,
   Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
   Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database,
   RefreshCw, Clock, HelpCircle, Terminal, MessageSquare, Send, Ghost, Eye,
@@ -10,7 +11,7 @@ import {
   ShieldCheck, AlertCircle, Brain
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { categorizeBookmarksWithAI, enrichBookmarksWithAI, semanticSearchBookmarks } from './services/gemini';
+import { categorizeBookmarksWithAI, enrichBookmarksWithAI, semanticSearchBookmarks, generateKeywordsWithAI } from './services/gemini';
 import { GoogleGenAI, Type } from "@google/genai";
 
 export default function App() {
@@ -32,6 +33,8 @@ export default function App() {
   const [showOrganizeModal, setShowOrganizeModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [geekModeBookmark, setGeekModeBookmark] = useState<any | null>(null);
+  const [geekModeTab, setGeekModeTab] = useState<'edit' | 'meta' | 'ai'>('edit');
+  const [isGeneratingKeywords, setIsGeneratingKeywords] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
@@ -1493,7 +1496,7 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <div className={`p-6 bg-slate-50/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 ${gridStyle === 'bento' ? 'grid-flow-dense auto-rows-[20rem]' : ''}`}>
+              <div className={`p-6 bg-slate-50/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-10 ${gridStyle === 'bento' ? 'grid-flow-dense auto-rows-[20rem]' : ''}`}>
                 {paginatedBookmarks.map((bookmark, idx) => (
                   <BookmarkGridCard 
                     key={bookmark.id} 
@@ -1724,7 +1727,7 @@ export default function App() {
                 ]}
               />
               <RoadmapSection 
-                title="Phase 6: The Ultimate Experience (Refinement)" 
+                title="Phase 6: The Ultimate Experience (Intelligence)" 
                 status="active"
                 items={[
                   { text: "Visual Bento Grid View (Dynamic asymmetrical layout)", done: true },
@@ -1732,6 +1735,9 @@ export default function App() {
                   { text: "Bookmark Pop-out Detail View (Metadata & Live Preview)", done: true },
                   { text: "Checked/Unchecked Status (Track your progress)", done: true },
                   { text: "Grid Style Toggle (Standard vs Bento View)", done: true },
+                  { text: "Title Editing & Auto-Fetch (Magic Title)", done: true },
+                  { text: "Bookmark Intelligence Editor (Multi-tab editing & AI Insights)", done: true },
+                  { text: "AI Keyword & Tag Generation (Deep content analysis)", done: true },
                 ]}
               />
               <RoadmapSection 
@@ -1745,19 +1751,23 @@ export default function App() {
                 ]}
               />
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v2.13.0)</h4>
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.0.0)</h4>
                 <ul className="space-y-1">
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Grid Style Toggle (Standard vs Bento)
+                    Bookmark Intelligence Editor (Tabs: Edit, Meta, AI)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Clickable Status Badges (Quick Check)
+                    AI Keyword & Tag Generation (Gemini Integration)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Bento Grid Layout Refinement
+                    Title Editing & Auto-Fetch (Magic Wand)
+                  </li>
+                  <li className="text-xs text-slate-600 flex items-center gap-2">
+                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
+                    Standard Grid Spacing Fix
                   </li>
                 </ul>
               </div>
@@ -1773,12 +1783,20 @@ export default function App() {
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">High Priority</h3>
                   <ul className="space-y-3">
                     <li className="flex items-center gap-3 text-slate-700">
-                      <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                      Implement Windows/Linux Magic Sync
+                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                      <span className="line-through opacity-50">Bookmark Intelligence Editor (v3.0.0)</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-700">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                      <span className="line-through opacity-50">AI Keyword Generation (v3.0.0)</span>
                     </li>
                     <li className="flex items-center gap-3 text-slate-700">
                       <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                      Build Browser Extension (Chrome/Firefox)
+                      <span>Browser Extension (Chrome/Firefox)</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-700">
+                      <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                      <span>Windows/Linux Magic Sync</span>
                     </li>
                     <li className="flex items-center gap-3 text-slate-700">
                       <div className="w-2 h-2 rounded-full bg-indigo-500 font-bold">NEW</div>
@@ -1817,56 +1835,252 @@ export default function App() {
         </div>
       )}
 
-      {/* Geek Mode Modal */}
+      {/* Geek Mode Modal (Enhanced Bookmark Editor) */}
       {geekModeBookmark && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[60] p-4">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-slate-200 font-mono text-slate-900 max-h-[90vh] overflow-y-auto"
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200"
           >
-            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-              <h2 className="text-xl font-bold text-emerald-600 flex items-center gap-3">
-                <Terminal className="w-6 h-6" />
-                Geek Mode: Bookmark Metadata
-              </h2>
-              <button onClick={() => setGeekModeBookmark(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
-                <XCircle size={24} />
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center shadow-sm">
+                  <Terminal size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Bookmark Intelligence</h2>
+                  <p className="text-sm text-slate-500 font-medium">Edit metadata, tags, and AI insights</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setGeekModeBookmark(null)} 
+                className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-white transition-all shadow-sm border border-transparent hover:border-slate-100"
+              >
+                <XCircle size={28} />
               </button>
             </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-slate-100 bg-white px-6">
+              {[
+                { id: 'edit', label: 'Edit Content', icon: Edit3 },
+                { id: 'meta', label: 'Metadata', icon: Database },
+                { id: 'ai', label: 'AI Insights', icon: Sparkles },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setGeekModeTab(tab.id as any)}
+                  className={`flex items-center gap-2 py-4 px-4 text-sm font-bold transition-all border-b-2 relative ${
+                    geekModeTab === tab.id 
+                      ? 'text-emerald-600 border-emerald-600' 
+                      : 'text-slate-400 border-transparent hover:text-slate-600'
+                  }`}
+                >
+                  <tab.icon size={16} />
+                  {tab.label}
+                  {geekModeTab === tab.id && (
+                    <motion.div layoutId="activeTab" className="absolute inset-x-0 -bottom-[2px] h-0.5 bg-emerald-600" />
+                  )}
+                </button>
+              ))}
+            </div>
             
-            <div className="space-y-4 text-sm">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 overflow-x-auto">
-                <pre className="text-emerald-600 whitespace-pre-wrap break-all">
-                  {JSON.stringify(geekModeBookmark, null, 2)}
-                </pre>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                  <span className="block text-xs text-slate-400 mb-1">Date Saved</span>
-                  <span className="text-slate-900">{geekModeBookmark.dateAdded ? new Date(geekModeBookmark.dateAdded).toLocaleString() : 'Unknown'}</span>
+            <div className="p-8 overflow-y-auto flex-1 bg-white">
+              {geekModeTab === 'edit' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Title</label>
+                      <input 
+                        type="text" 
+                        value={geekModeBookmark.title}
+                        onChange={(e) => setGeekModeBookmark({ ...geekModeBookmark, title: e.target.value })}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">URL</label>
+                      <input 
+                        type="text" 
+                        value={geekModeBookmark.url}
+                        onChange={(e) => setGeekModeBookmark({ ...geekModeBookmark, url: e.target.value })}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-mono text-xs"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                          <Tag size={12} /> Tags (Comma Separated)
+                        </label>
+                        <input 
+                          type="text" 
+                          placeholder="tech, research, tools..."
+                          value={Array.isArray(geekModeBookmark.tags) ? geekModeBookmark.tags.join(', ') : ''}
+                          onChange={(e) => setGeekModeBookmark({ ...geekModeBookmark, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                          <Key size={12} /> Keywords
+                        </label>
+                        <input 
+                          type="text" 
+                          placeholder="ai, machine learning, data..."
+                          value={Array.isArray(geekModeBookmark.keywords) ? geekModeBookmark.keywords.join(', ') : ''}
+                          onChange={(e) => setGeekModeBookmark({ ...geekModeBookmark, keywords: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <FileText size={12} /> Summary
+                      </label>
+                      <textarea 
+                        rows={3}
+                        value={geekModeBookmark.summary || ''}
+                        onChange={(e) => setGeekModeBookmark({ ...geekModeBookmark, summary: e.target.value })}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-sm resize-none"
+                        placeholder="Add a brief summary of this bookmark..."
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                  <span className="block text-xs text-slate-400 mb-1">Source Browser</span>
-                  <span className="text-slate-900 capitalize">{geekModeBookmark.source || 'Imported'}</span>
-                </div>
-              </div>
+              )}
 
-              <div className="mt-6 flex justify-end">
+              {geekModeTab === 'meta' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <div className="flex items-center gap-2 text-slate-400 mb-2">
+                        <History size={14} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Historical Save Date</span>
+                      </div>
+                      <div className="text-slate-900 font-mono text-sm">
+                        {geekModeBookmark.dateAdded ? new Date(geekModeBookmark.dateAdded).toLocaleString() : 'Unknown'}
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <div className="flex items-center gap-2 text-slate-400 mb-2">
+                        <Compass size={14} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Origin Source</span>
+                      </div>
+                      <div className="text-slate-900 font-bold capitalize">
+                        {geekModeBookmark.source || 'Imported'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-inner">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Terminal size={14} /> Raw JSON Structure
+                      </h4>
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(geekModeBookmark, null, 2));
+                          alert("JSON copied to clipboard!");
+                        }}
+                        className="text-[10px] font-bold text-emerald-500 hover:text-emerald-400 transition-colors uppercase"
+                      >
+                        Copy JSON
+                      </button>
+                    </div>
+                    <pre className="text-emerald-500 font-mono text-xs whitespace-pre-wrap break-all max-h-[300px] overflow-y-auto custom-scrollbar">
+                      {JSON.stringify(geekModeBookmark, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {geekModeTab === 'ai' && (
+                <div className="space-y-6">
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
+                        <Sparkles size={24} />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-bold text-indigo-900 mb-1">AI Keyword Generation</h4>
+                        <p className="text-sm text-indigo-700 mb-4">Let Gemini analyze the title and summary to generate deep keywords and relevant tags.</p>
+                        <button 
+                          onClick={async () => {
+                            setIsGeneratingKeywords(true);
+                            try {
+                              const result = await generateKeywordsWithAI(geekModeBookmark, selectedModel);
+                              setGeekModeBookmark({
+                                ...geekModeBookmark,
+                                keywords: result.keywords,
+                                tags: [...new Set([...(geekModeBookmark.tags || []), ...result.tags])]
+                              });
+                              awardXp(15);
+                            } catch (err) {
+                              alert("Failed to generate keywords: " + err);
+                            } finally {
+                              setIsGeneratingKeywords(false);
+                            }
+                          }}
+                          disabled={isGeneratingKeywords}
+                          className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2 disabled:opacity-50"
+                        >
+                          {isGeneratingKeywords ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
+                          {isGeneratingKeywords ? 'Analyzing Content...' : 'Generate AI Keywords'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {geekModeBookmark.keywords && geekModeBookmark.keywords.length > 0 && (
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Generated Keywords</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {geekModeBookmark.keywords.map((kw: string, i: number) => (
+                          <span key={i} className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-100">
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
+              <div className="flex items-center gap-4">
                 <button 
                   onClick={async () => {
                     const domain = new URL(geekModeBookmark.url).hostname;
                     const duckDuckGoIcon = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
-                    const updated = { ...geekModeBookmark, customIconUrl: duckDuckGoIcon };
-                    const newBookmarks = bookmarks.map(b => b.id === updated.id ? updated : b);
-                    setBookmarks(newBookmarks);
-                    setGeekModeBookmark(updated);
-                    await saveBookmarksToDB(newBookmarks);
+                    setGeekModeBookmark({ ...geekModeBookmark, customIconUrl: duckDuckGoIcon });
                   }}
-                  className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-emerald-600 rounded-lg text-sm font-medium transition-colors border border-slate-200 flex items-center gap-2"
+                  className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2"
                 >
-                  <RefreshCw size={16} /> Force Fetch Alternative Icon
+                  <RefreshCw size={14} /> Refresh Icon
+                </button>
+              </div>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setGeekModeBookmark(null)}
+                  className="px-6 py-2.5 text-slate-500 font-bold text-sm hover:text-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={async () => {
+                    const newBookmarks = bookmarks.map(b => b.id === geekModeBookmark.id ? geekModeBookmark : b);
+                    setBookmarks(newBookmarks);
+                    await saveBookmarksToDB(newBookmarks);
+                    setGeekModeBookmark(null);
+                    awardXp(10);
+                  }}
+                  className="px-8 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center gap-2"
+                >
+                  <Save size={18} /> Save Changes
                 </button>
               </div>
             </div>
@@ -1885,7 +2099,7 @@ export default function App() {
             <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
               <h2 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
                 <HelpCircle className="text-indigo-600 w-8 h-8" />
-                Help & Wiki
+                MarkFlow Wiki (v3.0.0)
               </h2>
               <button onClick={() => setShowHelpModal(false)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors">
                 <XCircle size={28} />
@@ -3079,7 +3293,7 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
       transition={{ delay: Math.min(idx * 0.02, 0.3) }}
       onClick={onClick}
       className={`bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col cursor-pointer
-        ${isBento ? (isLarge ? 'row-span-2 h-[32rem]' : 'h-80') : 'w-80 h-80'} 
+        ${isBento ? (isLarge ? 'row-span-2 h-[32rem]' : 'h-80') : 'w-full h-80'} 
         ${isWide ? 'sm:col-span-2' : ''}`}
     >
       <div className={`relative overflow-hidden flex items-center justify-center shrink-0 border-b border-slate-100 bg-slate-50
@@ -3228,9 +3442,13 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
 
 function BookmarkDetailModal({ isOpen, onClose, bookmark, onUpdate, onDelete }: any) {
   const [healthStatus, setHealthStatus] = useState<'checking' | 'alive' | 'dead' | 'redirect' | 'idle'>('idle');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
+  const [isFetchingTitle, setIsFetchingTitle] = useState(false);
   
   useEffect(() => {
     if (isOpen && bookmark) {
+      setEditedTitle(bookmark.title);
       setHealthStatus('checking');
       fetch('/api/check-health', {
         method: 'POST',
@@ -3244,6 +3462,33 @@ function BookmarkDetailModal({ isOpen, onClose, bookmark, onUpdate, onDelete }: 
       setHealthStatus('idle');
     }
   }, [isOpen, bookmark]);
+
+  const handleFetchTitle = async () => {
+    if (!bookmark) return;
+    setIsFetchingTitle(true);
+    try {
+      const res = await fetch('/api/fetch-title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: bookmark.url })
+      });
+      const data = await res.json();
+      if (data.title) {
+        setEditedTitle(data.title);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsFetchingTitle(false);
+    }
+  };
+
+  const handleSaveTitle = () => {
+    if (editedTitle.trim() && editedTitle !== bookmark.title) {
+      onUpdate({ ...bookmark, title: editedTitle.trim() });
+    }
+    setIsEditingTitle(false);
+  };
 
   if (!isOpen || !bookmark) return null;
 
@@ -3309,7 +3554,39 @@ function BookmarkDetailModal({ isOpen, onClose, bookmark, onUpdate, onDelete }: 
                 <Folder size={12} />
                 {bookmark.folder || 'Uncategorized'}
               </div>
-              <h2 className="text-2xl font-black text-slate-900 leading-tight">{bookmark.title}</h2>
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <input 
+                    autoFocus
+                    type="text" 
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
+                    className="text-2xl font-black text-slate-900 leading-tight border-b-2 border-indigo-500 focus:outline-none bg-transparent w-full"
+                  />
+                  <button onClick={handleSaveTitle} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg">
+                    <Check size={20} />
+                  </button>
+                  <button onClick={() => setIsEditingTitle(false)} className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-lg">
+                    <X size={20} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 group/title">
+                  <h2 className="text-2xl font-black text-slate-900 leading-tight">{bookmark.title}</h2>
+                  <button onClick={() => setIsEditingTitle(true)} className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg opacity-0 group-hover/title:opacity-100 transition-all">
+                    <Edit3 size={16} />
+                  </button>
+                  <button 
+                    onClick={handleFetchTitle} 
+                    disabled={isFetchingTitle}
+                    className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg opacity-0 group-hover/title:opacity-100 transition-all disabled:opacity-50"
+                    title="Fetch Title from URL"
+                  >
+                    {isFetchingTitle ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+                  </button>
+                </div>
+              )}
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
               <XCircle size={24} />
