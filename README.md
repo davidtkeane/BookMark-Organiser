@@ -21,6 +21,12 @@ MarkFlow is a lightning-fast, local-first bookmark manager that uses frontier AI
 *   **🎨 Theming Engine:** Professional Light, Dark, Matrix, and the official **Ranger** theme. All components, including AI popups, are fully theme-aware.
 *   **💾 Tactical Data Vault:** Full SQLite database snapshots, automatic hourly backups, and standard Netscape HTML exports.
 
+## 📸 Dashboard in Action
+
+<p align="center">
+  <img src="public/MarkFlow-Bookmarks-Dashboard.png" alt="MarkFlow Dashboard" width="100%">
+</p>
+
 ## 🚀 Getting Started
 
 ### Prerequisites
