@@ -20,9 +20,18 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'matrix'>(() => {
+    return (localStorage.getItem('theme') as any) || 'light';
+  });
   const [localBrowsers, setLocalBrowsers] = useState<any>({ chrome: false, brave: false, safari: false, firefox: false });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const restoreInputRef = useRef<HTMLInputElement>(null);
+
+  // Apply theme
+  useEffect(() => {
+    document.documentElement.className = theme;
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   // Fetch bookmarks and local browsers on mount
   useEffect(() => {
@@ -370,7 +379,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f5f5f5] text-slate-800 font-sans overflow-hidden">
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
       
       {/* Sidebar */}
       <div className="w-64 bg-white border-r border-slate-200 flex flex-col shadow-sm z-10">
@@ -487,6 +496,17 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-3">
+            <div className="flex items-center bg-slate-100 rounded-lg p-1 mr-2">
+              <select 
+                value={theme}
+                onChange={(e) => setTheme(e.target.value as any)}
+                className="bg-transparent text-sm text-slate-600 font-medium focus:outline-none px-2 cursor-pointer"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="matrix">Matrix</option>
+              </select>
+            </div>
             <div className="flex items-center bg-slate-100 rounded-lg p-1 mr-2">
               <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400 hover:text-slate-600'}`} title="List View">
                 <List size={16} />
