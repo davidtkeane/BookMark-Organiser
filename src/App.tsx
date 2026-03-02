@@ -6,7 +6,8 @@ import {
   Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
   Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database,
   RefreshCw, Clock, HelpCircle, Terminal, MessageSquare, Send, Ghost, Eye,
-  Coffee, Fingerprint, Dna, Trophy, Zap, Medal, Gift, Star
+  Coffee, Fingerprint, Dna, Trophy, Zap, Medal, Gift, Star,
+  ShieldCheck, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
@@ -163,6 +164,39 @@ export default function App() {
       totalCost: prev.totalCost + cost,
       requestCount: prev.requestCount + 1
     }));
+  };
+
+  const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+
+  const handleCheckApiKey = async () => {
+    setApiKeyStatus('checking');
+    setApiKeyError(null);
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        setApiKeyStatus('invalid');
+        setApiKeyError("No API key found in environment variables. Please check your .env file.");
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: selectedModel,
+        contents: "Hello, are you there? Just reply 'yes' if you can hear me.",
+        config: { maxOutputTokens: 10 }
+      });
+      if (response.text) {
+        setApiKeyStatus('valid');
+        setTimeout(() => setApiKeyStatus('idle'), 5000);
+      } else {
+        setApiKeyStatus('invalid');
+        setApiKeyError("Model returned an empty response. The key might be restricted.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      setApiKeyStatus('invalid');
+      setApiKeyError(error.message || "Failed to connect to Gemini API. Check your internet or key permissions.");
+    }
   };
 
   const getTimestamp = () => {
@@ -1850,9 +1884,31 @@ export default function App() {
                   <li>Click <strong>Create API key</strong>.</li>
                   <li>Copy the key and paste it into your <code>.env</code> file as <code>GEMINI_API_KEY=your_key_here</code>.</li>
                 </ol>
+                <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg mb-4">
+                  <p className="text-sm text-amber-800 font-medium flex items-center gap-2">
+                    <AlertTriangle size={18} /> Important Note on Billing
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    While the Gemini API has a generous free tier, Google may require you to link a <strong>Billing Account</strong> to your project to access certain models or to prevent abuse. You can manage this in the <a href="https://console.cloud.google.com/billing" target="_blank" rel="noreferrer" className="underline font-bold">Google Cloud Console</a>.
+                  </p>
+                </div>
                 <p className="text-sm text-slate-500">
                   Most developers on GitHub already have a Google account, making this the easiest way to get high-powered AI for free!
                 </p>
+              </section>
+
+              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <Chrome className="text-indigo-600" /> 6. Troubleshooting (M3 Macs & Keys)
+                </h3>
+                <p className="mb-3">
+                  If the AI Chat is not working on your M3 Mac or other device:
+                </p>
+                <ul className="list-disc pl-6 space-y-2 mb-4">
+                  <li><strong>Check your Key:</strong> Ensure you are using a key from <strong>Google AI Studio</strong> (not a standard Google Cloud API key unless you've enabled the "Generative Language API").</li>
+                  <li><strong>Browser Extensions:</strong> Some ad-blockers or privacy extensions might block the connection to Google's AI servers. Try disabling them for this site.</li>
+                  <li><strong>Environment Variables:</strong> If you are running MarkFlow locally, ensure the <code>GEMINI_API_KEY</code> is correctly set in your <code>.env</code> file and you have restarted the server.</li>
+                </ul>
               </section>
 
             </div>
@@ -2078,6 +2134,51 @@ export default function App() {
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={handleCheckApiKey}
+                      disabled={apiKeyStatus === 'checking'}
+                      className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all shadow-sm ${
+                        apiKeyStatus === 'checking' ? 'bg-slate-100 text-slate-400 cursor-not-allowed' :
+                        apiKeyStatus === 'valid' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                        apiKeyStatus === 'invalid' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                        'bg-slate-900 text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      {apiKeyStatus === 'checking' ? (
+                        <>
+                          <Loader2 className="animate-spin" size={18} />
+                          Verifying API Key...
+                        </>
+                      ) : apiKeyStatus === 'valid' ? (
+                        <>
+                          <CheckCircle2 size={18} />
+                          API Key is Working!
+                        </>
+                      ) : apiKeyStatus === 'invalid' ? (
+                        <>
+                          <AlertCircle size={18} />
+                          Key Check Failed
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck size={18} />
+                          Test API Key Connection
+                        </>
+                      )}
+                    </button>
+                    {apiKeyError && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-xs text-rose-600 bg-rose-50 p-3 rounded-lg border border-rose-100 flex items-start gap-2"
+                      >
+                        <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                        <span>{apiKeyError}</span>
+                      </motion.div>
+                    )}
                   </div>
 
                   <div className="bg-slate-950 rounded-xl p-5 text-slate-100 border border-slate-800 shadow-inner">
@@ -2410,6 +2511,24 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Floating Chat Button */}
+      {!showChat && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setShowChat(true)}
+          className="fixed bottom-8 right-8 z-[90] w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-indigo-700 transition-colors group"
+          title="Open AI Chat"
+        >
+          <MessageSquare size={24} />
+          <span className="absolute right-full mr-4 px-3 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Talk to AI
+          </span>
+        </motion.button>
+      )}
 
       {/* Auto-Prompt Toast */}
       <AnimatePresence>

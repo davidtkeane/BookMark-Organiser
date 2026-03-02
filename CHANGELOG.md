@@ -5,6 +5,20 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-03-02
+
+### Added
+- **API Key Verification:** Added a "Test API Key Connection" button in Settings to verify Gemini API key validity and connectivity.
+
+## [2.9.0] - 2026-03-02
+
+### Added
+- **Persistent AI Chat Button:** Added a floating action button in the bottom-right corner to easily re-open the AI chat at any time.
+- **Enhanced Help Documentation:**
+    - Added direct links to Google Cloud Billing for Gemini API setup.
+    - Added a dedicated Troubleshooting section for M3 Macs and API key confusion.
+    - Clarified the difference between AI Studio keys and standard Cloud keys.
+
 ## [2.8.0] - 2026-03-02
 
 ### Added
