@@ -338,6 +338,11 @@ export default function App() {
         return dateB - dateA; // Newest first
       });
     }
+
+    if (activeTab.startsWith('folder-')) {
+      const folderName = activeTab.replace('folder-', '');
+      filtered = filtered.filter(b => b.folder === folderName);
+    }
     
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -664,10 +669,14 @@ export default function App() {
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Folders</h2>
           <div className="space-y-1">
             {folders.map(folder => (
-              <div key={folder.id} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-slate-100 cursor-pointer text-sm text-slate-700">
-                <Folder size={16} className="text-slate-400" />
+              <div 
+                key={folder.id} 
+                onClick={() => setActiveTab(`folder-${folder.name}`)}
+                className={`flex items-center gap-2 p-1.5 rounded-md cursor-pointer text-sm transition-colors ${activeTab === `folder-${folder.name}` ? 'bg-indigo-50 text-indigo-700 font-medium' : 'hover:bg-slate-100 text-slate-700'}`}
+              >
+                <Folder size={16} className={activeTab === `folder-${folder.name}` ? 'text-indigo-500' : 'text-slate-400'} />
                 <span className="truncate flex-1">{folder.name}</span>
-                <span className="text-xs text-slate-400">{folder.count}</span>
+                <span className={`text-xs ${activeTab === `folder-${folder.name}` ? 'text-indigo-500 font-medium' : 'text-slate-400'}`}>{folder.count}</span>
               </div>
             ))}
             {folders.length === 0 && <p className="text-xs text-slate-400 italic px-2">No folders yet</p>}
@@ -775,8 +784,24 @@ export default function App() {
 
           {/* Action Area */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="border-b border-slate-100 flex items-center px-4">
+            <div className="border-b border-slate-100 flex items-center px-4 overflow-x-auto hide-scrollbar">
               <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>All Bookmarks</Tab>
+              {activeTab.startsWith('folder-') && (
+                <Tab active={true} onClick={() => {}}>
+                  <span className="flex items-center gap-2">
+                    <Folder size={14} />
+                    {activeTab.replace('folder-', '')}
+                  </span>
+                </Tab>
+              )}
+              {activeTab === 'time-machine' && (
+                <Tab active={true} onClick={() => {}}>
+                  <span className="flex items-center gap-2">
+                    <Clock size={14} />
+                    Time Machine
+                  </span>
+                </Tab>
+              )}
               <Tab active={activeTab === 'read-later'} onClick={() => setActiveTab('read-later')}>Read Later</Tab>
               <Tab active={activeTab === 'duplicates'} onClick={() => setActiveTab('duplicates')}>Duplicates</Tab>
               <Tab active={activeTab === 'dead'} onClick={() => setActiveTab('dead')}>Dead Links</Tab>
@@ -1260,9 +1285,12 @@ export default function App() {
               <section>
                 <h3 className="text-sm font-semibold text-red-500 uppercase tracking-wider mb-4 border-b border-red-100 pb-2">Danger Zone</h3>
                 <div className="border border-red-200 rounded-xl p-4 bg-red-50 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-red-900 mb-1">Clear Entire Database</h4>
-                    <p className="text-xs text-red-700">This will permanently delete all bookmarks, tags, and folders. Make sure you have a backup!</p>
+                  <div className="flex-1 pr-4">
+                    <h4 className="font-medium text-red-900 mb-1">Clear Local Database</h4>
+                    <p className="text-xs text-red-700 leading-relaxed">
+                      This will permanently delete all bookmarks, tags, and folders <strong>inside MarkFlow</strong>. <br/>
+                      <span className="italic opacity-90">(Don't worry, this will NOT delete the actual bookmarks in your Chrome/Safari browser!)</span>
+                    </p>
                   </div>
                   <button onClick={() => {
                     clearDatabase();
