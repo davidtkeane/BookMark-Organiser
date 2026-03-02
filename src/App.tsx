@@ -5,7 +5,8 @@ import {
   MoreVertical, CheckCircle2, XCircle, Loader2, Info, Download, UploadCloud, ListTodo,
   Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
   Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database,
-  RefreshCw, Clock, HelpCircle, Terminal, MessageSquare, Send, Ghost, Eye
+  RefreshCw, Clock, HelpCircle, Terminal, MessageSquare, Send, Ghost, Eye,
+  Coffee, Fingerprint, Dna
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
@@ -36,6 +37,10 @@ export default function App() {
     return localStorage.getItem('auto_backup_enabled') !== 'false';
   });
   const [isArchiving, setIsArchiving] = useState<string | null>(null);
+  const [showCoffeeDigest, setShowCoffeeDigest] = useState(false);
+  const [coffeeBookmarks, setCoffeeBookmarks] = useState<any[]>([]);
+  const [isBrewing, setIsBrewing] = useState(false);
+  const [isDetectingDNA, setIsDetectingDNA] = useState(false);
 
   const GEMINI_MODELS = [
     { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Fastest & Lowest Cost', costPer1M: 0.10 },
@@ -89,7 +94,7 @@ export default function App() {
     return false;
   };
   const [isLoading, setIsLoading] = useState(true);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'matrix'>(() => {
+  const [theme, setTheme] = useState<'light' | 'dark' | 'matrix' | 'ranger'>(() => {
     return (localStorage.getItem('theme') as any) || 'light';
   });
   const [localBrowsers, setLocalBrowsers] = useState<any>({ chrome: false, brave: false, safari: false, firefox: false });
@@ -522,6 +527,58 @@ export default function App() {
     setActiveTab('duplicates');
   };
 
+  const handleDNADetection = async () => {
+    setIsDetectingDNA(true);
+    const newBookmarks = [...bookmarks];
+    let dnaDupes = 0;
+
+    // Fuzzy matching for DNA detection
+    for (let i = 0; i < newBookmarks.length; i++) {
+      for (let j = i + 1; j < newBookmarks.length; j++) {
+        const b1 = newBookmarks[i];
+        const b2 = newBookmarks[j];
+        
+        // Skip if already marked
+        if (b1.status === 'duplicate' && b2.status === 'duplicate') continue;
+
+        // DNA Match 1: Similar Titles
+        const title1 = b1.title.toLowerCase().trim();
+        const title2 = b2.title.toLowerCase().trim();
+        
+        // DNA Match 2: Similar URLs (ignoring query params)
+        const url1 = b1.url.split('?')[0].replace(/\/$/, '').toLowerCase();
+        const url2 = b2.url.split('?')[0].replace(/\/$/, '').toLowerCase();
+
+        const isTitleMatch = title1.length > 15 && (title1 === title2 || (title1.includes(title2) && title2.length > 15) || (title2.includes(title1) && title1.length > 15));
+        const isUrlMatch = url1 === url2;
+
+        if (isTitleMatch || isUrlMatch) {
+          b1.status = 'duplicate';
+          b2.status = 'duplicate';
+          dnaDupes++;
+        }
+      }
+    }
+
+    setBookmarks(newBookmarks);
+    await saveBookmarksToDB(newBookmarks);
+    setIsDetectingDNA(false);
+    alert(`DNA Scan Complete! Found ${dnaDupes} potential "DNA" matches (similar content/URLs).`);
+    setActiveTab('duplicates');
+  };
+
+  const brewCoffeeDigest = () => {
+    setIsBrewing(true);
+    setShowCoffeeDigest(true);
+    
+    // Pick 5 random bookmarks
+    const shuffled = [...bookmarks].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 5);
+    
+    setCoffeeBookmarks(selected);
+    setTimeout(() => setIsBrewing(false), 1500);
+  };
+
   const handleCheckHealth = async () => {
     setIsCheckingHealth(true);
     const newBookmarks = [...bookmarks];
@@ -811,13 +868,21 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
+    <div className={`flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden ${theme === 'ranger' ? 'ranger' : ''}`}>
       
       {/* Sidebar */}
       <div className="w-64 bg-white border-r border-slate-200 flex flex-col shadow-sm z-10">
         <div className="p-4 border-b border-slate-100 flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md">
-            <LinkIcon size={18} strokeWidth={2.5} />
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md ${theme === 'ranger' ? 'bg-[#1a1c1e] border border-[#8a9099]' : 'bg-indigo-600'}`}>
+            {theme === 'ranger' ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C7.58 2 4 5.58 4 10V14C4 18.42 7.58 22 12 22C16.42 22 20 18.42 20 14V10C20 5.58 16.42 2 12 2Z" fill="#8a9099"/>
+                <path d="M5 11H19V13C19 13 17 14.5 12 14.5C7 14.5 5 13 5 13V11Z" fill="#1a1c1e"/>
+                <path d="M11 14.5V22H13V14.5H11Z" fill="#1a1c1e"/>
+              </svg>
+            ) : (
+              <LinkIcon size={18} strokeWidth={2.5} />
+            )}
           </div>
           <h1 className="font-semibold text-lg tracking-tight text-slate-900">MarkFlow</h1>
         </div>
@@ -896,6 +961,7 @@ export default function App() {
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-8 mb-3">Smart Views</h2>
           <div className="space-y-1">
             <SmartViewItem icon={<MessageSquare size={16} />} label="AI Chat" count={0} color="text-indigo-600" onClick={() => setShowChat(true)} />
+            <SmartViewItem icon={<Coffee size={16} />} label="Morning Coffee" count={0} color="text-amber-600" onClick={brewCoffeeDigest} />
             <SmartViewItem icon={<Clock size={16} />} label="Time Machine" count={0} color="text-purple-500" onClick={() => setActiveTab('time-machine')} />
             <SmartViewItem icon={<BookOpen size={16} />} label="Read Later" count={readLaterCount} color="text-emerald-500" onClick={() => setActiveTab('read-later')} />
             <SmartViewItem icon={<Copy size={16} />} label="Duplicates" count={duplicatesCount} color="text-amber-500" onClick={() => setActiveTab('duplicates')} />
@@ -1024,6 +1090,36 @@ export default function App() {
               <Tab active={activeTab === 'uncategorized'} onClick={() => setActiveTab('uncategorized')}>Uncategorized</Tab>
             </div>
             
+            {activeTab === 'duplicates' && (
+              <div className="p-4 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                    <Fingerprint size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Advanced Duplicate Detection</h3>
+                    <p className="text-xs text-slate-500">Scan for similar titles and content "DNA" across your library.</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={handleFindDuplicates}
+                    className="px-4 py-2 bg-white border border-amber-200 text-amber-700 rounded-xl text-sm font-bold hover:bg-amber-100 transition-all shadow-sm"
+                  >
+                    URL Scan
+                  </button>
+                  <button 
+                    onClick={handleDNADetection}
+                    disabled={isDetectingDNA}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-200 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isDetectingDNA ? <Loader2 size={16} className="animate-spin" /> : <Dna size={16} />}
+                    DNA Content Scan
+                  </button>
+                </div>
+              </div>
+            )}
+
             {viewMode === 'list' ? (
               <div className="divide-y divide-slate-100">
                 {paginatedBookmarks.map((bookmark, idx) => (
@@ -1336,12 +1432,20 @@ export default function App() {
                 ]}
               />
               <RoadmapSection 
-                title="Phase 5: The Next Level (Future)" 
+                title="Phase 5: The Smart Assistant (Intelligence)" 
                 status="active"
                 items={[
                   { text: "AI Chat with Library (Natural language search & organization)", done: true },
                   { text: "Ghost Archiving (Local HTML copies of bookmarked pages)", done: true },
+                  { text: "Morning Coffee Digest (Daily curated bookmark selection)", done: true },
+                  { text: "Duplicate DNA Detection (Fuzzy content matching)", done: true },
                   { text: "Automatic Database Backups (Hourly local snapshots)", done: true },
+                ]}
+              />
+              <RoadmapSection 
+                title="Phase 6: The Next Level (Future)" 
+                status="active"
+                items={[
                   { text: "Cross-Platform Magic Sync (Windows & Linux support)", done: false },
                   { text: "Browser Extension (Save directly to MarkFlow from your browser)", done: false },
                   { text: "Collaborative Folders (Share curated lists with friends/team)", done: false },
@@ -1664,6 +1768,20 @@ export default function App() {
         </div>
       )}
 
+      {/* Coffee Digest Modal */}
+      <CoffeeDigestModal 
+        isOpen={showCoffeeDigest} 
+        onClose={() => setShowCoffeeDigest(false)} 
+        bookmarks={coffeeBookmarks}
+        isBrewing={isBrewing}
+        onBrewMore={brewCoffeeDigest}
+        onChatAbout={(b: any) => {
+          setShowCoffeeDigest(false);
+          setShowChat(true);
+          handleChat(`Tell me more about this bookmark: ${b.title} (${b.url})`);
+        }}
+      />
+
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1779,7 +1897,7 @@ export default function App() {
                 <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
                   <LayoutGrid size={16} className="text-purple-600" /> Appearance
                 </h3>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <button onClick={() => setTheme('light')} className={`p-4 rounded-xl border transition-all ${theme === 'light' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
                     <div className="flex justify-center mb-2"><Info size={20} className="text-slate-400" /></div>
                     <div className="text-xs font-medium text-center">Light</div>
@@ -1791,6 +1909,16 @@ export default function App() {
                   <button onClick={() => setTheme('matrix')} className={`p-4 rounded-xl border transition-all ${theme === 'matrix' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
                     <div className="flex justify-center mb-2"><Terminal size={20} className="text-slate-400" /></div>
                     <div className="text-xs font-medium text-center">Matrix</div>
+                  </button>
+                  <button onClick={() => setTheme('ranger')} className={`p-4 rounded-xl border transition-all ${theme === 'ranger' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
+                    <div className="flex justify-center mb-2">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C7.58 2 4 5.58 4 10V14C4 18.42 7.58 22 12 22C16.42 22 20 18.42 20 14V10C20 5.58 16.42 2 12 2Z" fill="#8a9099"/>
+                        <path d="M5 11H19V13C19 13 17 14.5 12 14.5C7 14.5 5 13 5 13V11Z" fill="#1a1c1e"/>
+                        <path d="M11 14.5V22H13V14.5H11Z" fill="#1a1c1e"/>
+                      </svg>
+                    </div>
+                    <div className="text-xs font-medium text-center">Ranger</div>
                   </button>
                 </div>
               </section>
@@ -1897,6 +2025,112 @@ export default function App() {
 }
 
 // Subcomponents
+
+function CoffeeDigestModal({ isOpen, onClose, bookmarks, isBrewing, onBrewMore, onChatAbout }: any) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+      >
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-amber-50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center">
+              <Coffee size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Morning Coffee Digest</h2>
+              <p className="text-xs text-slate-500">A fresh selection of bookmarks for your morning brew.</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-amber-100 transition-colors">
+            <XCircle size={24} />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+          {isBrewing ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <Loader2 size={48} className="animate-spin text-amber-600" />
+              <p className="text-slate-500 font-medium animate-pulse">Brewing your digest...</p>
+            </div>
+          ) : (
+            <>
+              {bookmarks.map((b: any, i: number) => (
+                <motion.div 
+                  key={b.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-amber-200 transition-all group"
+                >
+                  <div className="flex items-start gap-4">
+                    <img 
+                      src={`https://www.google.com/s2/favicons?domain=${new URL(b.url).hostname}&sz=64`} 
+                      alt="" 
+                      className="w-10 h-10 rounded-lg bg-white p-1 shadow-sm shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-slate-900 truncate group-hover:text-amber-700 transition-colors">{b.title}</h3>
+                      <p className="text-xs text-slate-500 truncate mb-2">{new URL(b.url).hostname}</p>
+                      <div className="flex gap-2">
+                        <a 
+                          href={b.url} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="text-[10px] font-bold uppercase tracking-wider bg-white border border-slate-200 px-2 py-1 rounded-md hover:bg-amber-600 hover:text-white hover:border-amber-600 transition-all"
+                        >
+                          Read Now
+                        </a>
+                        <button 
+                          onClick={() => onChatAbout(b)}
+                          className="text-[10px] font-bold uppercase tracking-wider bg-white border border-slate-200 px-2 py-1 rounded-md hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all"
+                        >
+                          AI Summary
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </>
+          )}
+        </div>
+
+        <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
+          <button 
+            onClick={onBrewMore}
+            disabled={isBrewing}
+            className="flex-1 py-3 bg-amber-600 text-white rounded-2xl font-bold text-sm hover:bg-amber-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-200 disabled:opacity-50"
+          >
+            <RefreshCw size={18} className={isBrewing ? "animate-spin" : ""} />
+            Brew Another Cup
+          </button>
+          <button 
+            onClick={() => {
+              const randomFolder = bookmarks[Math.floor(Math.random() * bookmarks.length)]?.folder || 'Uncategorized';
+              onClose();
+              onChatAbout({ title: `Explore the '${randomFolder}' folder`, url: `folder:${randomFolder}` });
+            }}
+            className="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+          >
+            <Sparkles size={18} />
+            Surprise Me
+          </button>
+          <button 
+            onClick={onClose}
+            className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-100 transition-all"
+          >
+            Done
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 function RoadmapSection({ title, items, status }: { title: string, items: {text: string, done: boolean}[], status: string }) {
   return (

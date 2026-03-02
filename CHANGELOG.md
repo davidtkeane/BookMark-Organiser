@@ -5,6 +5,31 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-03-01
+
+### Added
+- **Morning Coffee Digest:** A new interactive daily selection of bookmarks to rediscover your library. Features "Brew Another Cup" and AI-powered summaries.
+- **Duplicate DNA Detection:** Advanced fuzzy matching that scans for similar titles and content "DNA" beyond just exact URL matches.
+- **DNA Scan Header:** Dedicated interface in the Duplicates tab for running advanced scans.
+
+### Changed
+- **Roadmap:** Updated to Phase 6, marking intelligence features as complete.
+- **Sidebar:** Added "Morning Coffee" to Smart Views.
+
+## [2.3.0] - 2026-03-01
+
+### Added
+- **Ranger Theme:** A new tactical, military-inspired theme with a Mandalorian aesthetic. Features a near-black palette with steel grey accents and sharp geometric edges.
+- **Ranger Logo:** Integrated a custom Mandalorian helmet logo for the Ranger theme.
+- **Settings Overhaul:** Replaced the basic setup guide with a comprehensive Settings modal.
+- **AI Model Selection:** Users can now choose between Gemini 3 Flash, 3.1 Pro, and Flash Lite models.
+- **AI Usage Dashboard:** Real-time tracking of tokens, estimated costs, and request counts (saved to local storage).
+- **Consolidated Settings:** Appearance, AI, and Data management are now all accessible from a single unified interface.
+
+### Changed
+- **AI Chat:** Now respects the user's selected model and provides real-time cost feedback.
+- **Sidebar:** Updated to dynamically change the logo based on the active theme.
+
 ## [2.2.0] - 2026-03-01
 
 ### Added
