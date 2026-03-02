@@ -6,7 +6,7 @@ import {
   Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
   Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database,
   RefreshCw, Clock, HelpCircle, Terminal, MessageSquare, Send, Ghost, Eye,
-  Coffee, Fingerprint, Dna
+  Coffee, Fingerprint, Dna, Trophy, Zap, Medal, Gift, Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
@@ -41,6 +41,69 @@ export default function App() {
   const [coffeeBookmarks, setCoffeeBookmarks] = useState<any[]>([]);
   const [isBrewing, setIsBrewing] = useState(false);
   const [isDetectingDNA, setIsDetectingDNA] = useState(false);
+  
+  // Gamification State
+  const [xp, setXp] = useState(() => Number(localStorage.getItem('librarian_xp') || '0'));
+  const [level, setLevel] = useState(() => Math.floor(Math.sqrt(xp / 100)) + 1);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  
+  // Time Capsule State
+  const [showTimeCapsule, setShowTimeCapsule] = useState(false);
+  const [capsuleBookmark, setCapsuleBookmark] = useState<any | null>(null);
+
+  // Smart Search & Auto-Prompt State
+  const [autoPromptEnabled, setAutoPromptEnabled] = useState(() => {
+    return localStorage.getItem('auto_prompt_enabled') !== 'false';
+  });
+  const [autoPromptDelay, setAutoPromptDelay] = useState(15); // seconds
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [showAutoPrompt, setShowAutoPrompt] = useState(false);
+  const [customMatrixLogo, setCustomMatrixLogo] = useState(() => localStorage.getItem('custom_matrix_logo') || null);
+
+  useEffect(() => {
+    if (!autoPromptEnabled || showChat) return;
+
+    const timer = setInterval(() => {
+      const idleTime = (Date.now() - lastActivity) / 1000;
+      if (idleTime >= autoPromptDelay && !showAutoPrompt) {
+        setShowAutoPrompt(true);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [lastActivity, autoPromptEnabled, autoPromptDelay, showChat, showAutoPrompt]);
+
+  const resetActivity = () => {
+    setLastActivity(Date.now());
+    if (showAutoPrompt) setShowAutoPrompt(false);
+  };
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resetActivity);
+    window.addEventListener('keydown', resetActivity);
+    window.addEventListener('click', resetActivity);
+    return () => {
+      window.removeEventListener('mousemove', resetActivity);
+      window.removeEventListener('keydown', resetActivity);
+      window.removeEventListener('click', resetActivity);
+    };
+  }, [showAutoPrompt]);
+
+  const awardXp = (amount: number) => {
+    setXp(prev => {
+      const newXp = prev + amount;
+      localStorage.setItem('librarian_xp', String(newXp));
+      const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1;
+      if (newLevel > Math.floor(Math.sqrt(prev / 100)) + 1) {
+        setShowLevelUp(true);
+      }
+      return newXp;
+    });
+  };
+
+  useEffect(() => {
+    setLevel(Math.floor(Math.sqrt(xp / 100)) + 1);
+  }, [xp]);
 
   const GEMINI_MODELS = [
     { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Fastest & Lowest Cost', costPer1M: 0.10 },
@@ -291,7 +354,7 @@ export default function App() {
         // Tag all imported bookmarks with the selected source
         const taggedData = data.map(b => ({ ...b, source: selectedSource }));
         await saveBookmarksToDB(taggedData);
-        
+        awardXp(100);
         alert(`Successfully imported and tagged as ${selectedSource}!`);
         setShowDataModal(false);
       } catch (err) {
@@ -365,6 +428,7 @@ export default function App() {
         const unique = Array.from(new Map(combined.map(item => [item.url, item])).values());
         
         await saveBookmarksToDB(unique);
+        awardXp(newBookmarks.length > 50 ? 100 : 50);
       } catch (err) {
         alert("Error parsing bookmarks file.");
       }
@@ -504,6 +568,7 @@ export default function App() {
     setCheckProgress({ current: 100, total: 100, status: 'Saving results...' });
     setBookmarks(newBookmarks);
     await saveBookmarksToDB(newBookmarks);
+    awardXp(25);
     
     setTimeout(() => {
       setShowChecksModal(false);
@@ -524,6 +589,7 @@ export default function App() {
       }
     });
     await saveBookmarksToDB(newBookmarks);
+    awardXp(15);
     setActiveTab('duplicates');
   };
 
@@ -563,6 +629,7 @@ export default function App() {
     setBookmarks(newBookmarks);
     await saveBookmarksToDB(newBookmarks);
     setIsDetectingDNA(false);
+    awardXp(150);
     alert(`DNA Scan Complete! Found ${dnaDupes} potential "DNA" matches (similar content/URLs).`);
     setActiveTab('duplicates');
   };
@@ -576,7 +643,16 @@ export default function App() {
     const selected = shuffled.slice(0, 5);
     
     setCoffeeBookmarks(selected);
+    awardXp(10);
     setTimeout(() => setIsBrewing(false), 1500);
+  };
+
+  const triggerTimeCapsule = () => {
+    if (bookmarks.length === 0) return;
+    const randomBookmark = bookmarks[Math.floor(Math.random() * bookmarks.length)];
+    setCapsuleBookmark(randomBookmark);
+    setShowTimeCapsule(true);
+    awardXp(20);
   };
 
   const handleCheckHealth = async () => {
@@ -630,6 +706,7 @@ export default function App() {
         }
       });
       await saveBookmarksToDB(newBookmarks);
+      awardXp(100);
     } catch (error: any) {
       alert("Error organizing bookmarks: " + error.message);
     }
@@ -658,6 +735,7 @@ export default function App() {
         }
       });
       await saveBookmarksToDB(newBookmarks);
+      awardXp(needsEnrichment.length * 20);
     } catch (error: any) {
       alert("Error enriching bookmarks: " + error.message);
     }
@@ -680,6 +758,7 @@ export default function App() {
           b.status = 'archived';
         }
         await saveBookmarksToDB(newBookmarks);
+        awardXp(50);
         alert("Successfully resurrected link from the Internet Archive!");
       } else {
         alert("No snapshot found in the Wayback Machine for this URL.");
@@ -701,6 +780,7 @@ export default function App() {
       if (data.success) {
         const newBookmarks = bookmarks.map(b => b.id === bookmark.id ? { ...b, archivedAt: data.archivedAt } : b);
         setBookmarks(newBookmarks);
+        awardXp(30);
         alert("Successfully saved a local copy of this page!");
       }
     } catch (e) {
@@ -872,19 +952,38 @@ export default function App() {
       
       {/* Sidebar */}
       <div className="w-64 bg-white border-r border-slate-200 flex flex-col shadow-sm z-10">
-        <div className="p-4 border-b border-slate-100 flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md ${theme === 'ranger' ? 'bg-[#1a1c1e] border border-[#8a9099]' : 'bg-indigo-600'}`}>
-            {theme === 'ranger' ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C7.58 2 4 5.58 4 10V14C4 18.42 7.58 22 12 22C16.42 22 20 18.42 20 14V10C20 5.58 16.42 2 12 2Z" fill="#8a9099"/>
-                <path d="M5 11H19V13C19 13 17 14.5 12 14.5C7 14.5 5 13 5 13V11Z" fill="#1a1c1e"/>
-                <path d="M11 14.5V22H13V14.5H11Z" fill="#1a1c1e"/>
-              </svg>
-            ) : (
-              <LinkIcon size={18} strokeWidth={2.5} />
-            )}
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md overflow-hidden ${theme === 'ranger' ? 'bg-[#1a1c1e] border border-[#8a9099]' : theme === 'matrix' ? 'bg-black border border-emerald-500/50' : 'bg-indigo-600'}`}>
+              {theme === 'ranger' ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C7.58 2 4 5.58 4 10V14C4 18.42 7.58 22 12 22C16.42 22 20 18.42 20 14V10C20 5.58 16.42 2 12 2Z" fill="#8a9099"/>
+                  <path d="M5 11H19V13C19 13 17 14.5 12 14.5C7 14.5 5 13 5 13V11Z" fill="#1a1c1e"/>
+                  <path d="M11 14.5V22H13V14.5H11Z" fill="#1a1c1e"/>
+                </svg>
+              ) : theme === 'matrix' && customMatrixLogo ? (
+                <img src={customMatrixLogo} alt="Matrix Logo" className="w-full h-full object-contain filter grayscale sepia hue-rotate-[70deg] saturate-[500%] brightness-[0.8]" />
+              ) : theme === 'matrix' ? (
+                <Terminal size={18} className="text-emerald-500" />
+              ) : (
+                <LinkIcon size={18} strokeWidth={2.5} />
+              )}
+            </div>
+            <h1 className="font-semibold text-lg tracking-tight text-slate-900">MarkFlow</h1>
           </div>
-          <h1 className="font-semibold text-lg tracking-tight text-slate-900">MarkFlow</h1>
+          
+          <div className="flex flex-col items-end">
+            <div className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+              <Trophy size={10} />
+              <span className="text-[10px] font-bold uppercase tracking-tighter">LVL {level}</span>
+            </div>
+            <div className="w-12 bg-slate-100 h-1 rounded-full mt-1 overflow-hidden">
+              <div 
+                className="bg-amber-500 h-full transition-all duration-500" 
+                style={{ width: `${(xp % 100)}%` }}
+              ></div>
+            </div>
+          </div>
         </div>
 
         <div className="p-4 flex-1 overflow-y-auto">
@@ -962,6 +1061,7 @@ export default function App() {
           <div className="space-y-1">
             <SmartViewItem icon={<MessageSquare size={16} />} label="AI Chat" count={0} color="text-indigo-600" onClick={() => setShowChat(true)} />
             <SmartViewItem icon={<Coffee size={16} />} label="Morning Coffee" count={0} color="text-amber-600" onClick={brewCoffeeDigest} />
+            <SmartViewItem icon={<Gift size={16} />} label="Time Capsule" count={0} color="text-pink-500" onClick={triggerTimeCapsule} />
             <SmartViewItem icon={<Clock size={16} />} label="Time Machine" count={0} color="text-purple-500" onClick={() => setActiveTab('time-machine')} />
             <SmartViewItem icon={<BookOpen size={16} />} label="Read Later" count={readLaterCount} color="text-emerald-500" onClick={() => setActiveTab('read-later')} />
             <SmartViewItem icon={<Copy size={16} />} label="Duplicates" count={duplicatesCount} color="text-amber-500" onClick={() => setActiveTab('duplicates')} />
@@ -1001,10 +1101,24 @@ export default function App() {
             <input 
               type="text" 
               placeholder="Search bookmarks, URLs, folders..." 
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              className="w-full pl-10 pr-12 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            <button 
+              onClick={() => {
+                if (searchQuery) {
+                  setShowChat(true);
+                  handleChat(`Search my library and the web for more information about: ${searchQuery}`);
+                } else {
+                  setShowChat(true);
+                }
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              title="AI Search & Research"
+            >
+              <Sparkles size={18} />
+            </button>
           </div>
           
           <div className="flex items-center gap-3">
@@ -1017,6 +1131,7 @@ export default function App() {
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
                 <option value="matrix">Matrix</option>
+                <option value="ranger">Ranger</option>
               </select>
             </div>
             <div className="flex items-center bg-slate-100 rounded-lg p-1 mr-2">
@@ -1439,7 +1554,11 @@ export default function App() {
                   { text: "Ghost Archiving (Local HTML copies of bookmarked pages)", done: true },
                   { text: "Morning Coffee Digest (Daily curated bookmark selection)", done: true },
                   { text: "Duplicate DNA Detection (Fuzzy content matching)", done: true },
+                  { text: "Librarian Level-Up (Gamification & XP system)", done: true },
+                  { text: "Time Capsule Trigger (Surfacing old memories)", done: true },
                   { text: "Automatic Database Backups (Hourly local snapshots)", done: true },
+                  { text: "Interactive AI Search Tool with Auto-Prompt (Proactive help)", done: true },
+                  { text: "Custom Matrix Logo Upload & Processing (Digital Rain Filter)", done: true },
                 ]}
               />
               <RoadmapSection 
@@ -1451,6 +1570,27 @@ export default function App() {
                   { text: "Collaborative Folders (Share curated lists with friends/team)", done: false },
                 ]}
               />
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v2.6.0)</h4>
+                <ul className="space-y-1">
+                  <li className="text-xs text-slate-600 flex items-center gap-2">
+                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
+                    Added Interactive AI Search Tool in header
+                  </li>
+                  <li className="text-xs text-slate-600 flex items-center gap-2">
+                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
+                    Added Smart Assistant Auto-Prompt (Configurable)
+                  </li>
+                  <li className="text-xs text-slate-600 flex items-center gap-2">
+                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
+                    Added Custom Matrix Logo Upload & Processing
+                  </li>
+                  <li className="text-xs text-slate-600 flex items-center gap-2">
+                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
+                    Fixed AI Stats readability in Geek Mode
+                  </li>
+                </ul>
+              </div>
             </div>
 
             <div className="mt-12 border-t border-slate-100 pt-8">
@@ -1469,6 +1609,14 @@ export default function App() {
                     <li className="flex items-center gap-3 text-slate-700">
                       <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
                       Build Browser Extension (Chrome/Firefox)
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-400 line-through">
+                      <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+                      Interactive AI Search Tool with Auto-Prompt
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-400 line-through">
+                      <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+                      Custom Matrix Logo Upload & Processing
                     </li>
                   </ul>
                 </div>
@@ -1833,25 +1981,142 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-900 rounded-xl p-5 text-slate-300">
-                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <div className="bg-slate-950 rounded-xl p-5 text-slate-100 border border-slate-800 shadow-inner">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                       <Terminal size={14} /> AI Usage Stats (Geek Mode)
                     </h4>
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <div className="text-[10px] text-slate-500 uppercase">Total Tokens</div>
-                        <div className="text-lg font-mono text-emerald-400">{aiStats.totalTokens.toLocaleString()}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold">Total Tokens</div>
+                        <div className="text-lg font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">{aiStats.totalTokens.toLocaleString()}</div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-slate-500 uppercase">Est. Cost</div>
-                        <div className="text-lg font-mono text-emerald-400">${aiStats.totalCost.toFixed(4)}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold">Est. Cost</div>
+                        <div className="text-lg font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">${aiStats.totalCost.toFixed(4)}</div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-slate-500 uppercase">Requests</div>
-                        <div className="text-lg font-mono text-emerald-400">{aiStats.requestCount}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold">Requests</div>
+                        <div className="text-lg font-mono text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">{aiStats.requestCount}</div>
                       </div>
                     </div>
                   </div>
+                </div>
+              </section>
+
+              {/* Matrix Logo Customization */}
+              <section>
+                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <ImageIcon size={16} className="text-emerald-600" /> Matrix Logo Customization
+                </h3>
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                  <div className="flex items-center gap-6">
+                    <div className="w-24 h-24 bg-black rounded-xl border-2 border-emerald-500/30 flex items-center justify-center overflow-hidden relative group">
+                      {customMatrixLogo ? (
+                        <img src={customMatrixLogo} alt="Custom Logo" className="w-full h-full object-contain filter grayscale sepia hue-rotate-[70deg] saturate-[500%] brightness-[0.8]" />
+                      ) : (
+                        <div className="text-emerald-500 font-mono text-xs text-center p-2">NO LOGO</div>
+                      )}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button 
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/png';
+                            input.onchange = (e: any) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                  const base64 = ev.target?.result as string;
+                                  setCustomMatrixLogo(base64);
+                                  localStorage.setItem('custom_matrix_logo', base64);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            };
+                            input.click();
+                          }}
+                          className="text-white text-[10px] font-bold uppercase"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-slate-900 mb-1">Matrix-ify Your Logo</h4>
+                      <p className="text-xs text-slate-500 mb-4">Upload a PNG and we'll apply the Matrix digital rain filter. You can even download the result!</p>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            if (!customMatrixLogo) return;
+                            const link = document.createElement('a');
+                            link.href = customMatrixLogo;
+                            link.download = 'markflow-matrix-logo.png';
+                            link.click();
+                          }}
+                          disabled={!customMatrixLogo}
+                          className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <Download size={14} /> Download
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setCustomMatrixLogo(null);
+                            localStorage.removeItem('custom_matrix_logo');
+                          }}
+                          disabled={!customMatrixLogo}
+                          className="px-4 py-2 bg-white border border-slate-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <Trash2 size={14} /> Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Smart Assistant Section */}
+              <section>
+                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <MessageSquare size={16} className="text-blue-600" /> Smart Assistant
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                      <h4 className="font-medium text-slate-900">Interactive Auto-Prompt</h4>
+                      <p className="text-xs text-slate-500">Gemini will offer help if you're idle for {autoPromptDelay}s.</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const newVal = !autoPromptEnabled;
+                        setAutoPromptEnabled(newVal);
+                        localStorage.setItem('auto_prompt_enabled', String(newVal));
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${autoPromptEnabled ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}
+                    >
+                      {autoPromptEnabled ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                      {autoPromptEnabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                  </div>
+                  {autoPromptEnabled && (
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                      <label className="block text-xs font-bold text-blue-700 uppercase mb-2">Prompt Delay (seconds)</label>
+                      <input 
+                        type="range" 
+                        min="5" 
+                        max="60" 
+                        step="5"
+                        value={autoPromptDelay}
+                        onChange={(e) => setAutoPromptDelay(Number(e.target.value))}
+                        className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      />
+                      <div className="flex justify-between text-[10px] text-blue-500 mt-1 font-mono">
+                        <span>5s</span>
+                        <span>{autoPromptDelay}s</span>
+                        <span>60s</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -1889,6 +2154,32 @@ export default function App() {
                       Open Data Manager
                     </button>
                   </div>
+                </div>
+              </section>
+
+              {/* Librarian Level Section */}
+              <section className="bg-amber-50 rounded-2xl p-6 border border-amber-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                    <Trophy size={16} /> Librarian Level
+                  </h3>
+                  <span className="text-xs font-bold text-amber-600 bg-white px-2 py-1 rounded-full border border-amber-200">
+                    LVL {level}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-amber-700 uppercase tracking-tighter">
+                    <span>Progress to Level {level + 1}</span>
+                    <span>{xp % 100} / 100 XP</span>
+                  </div>
+                  <div className="w-full bg-amber-200/50 h-3 rounded-full overflow-hidden border border-amber-200">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${xp % 100}%` }}
+                      className="h-full bg-amber-500 shadow-inner transition-all duration-500"
+                    />
+                  </div>
+                  <p className="text-[10px] text-amber-600 italic">Keep organizing to earn XP and unlock new curator titles!</p>
                 </div>
               </section>
 
@@ -2020,11 +2311,168 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Auto-Prompt Toast */}
+      <AnimatePresence>
+        {showAutoPrompt && autoPromptEnabled && !showChat && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-md px-4"
+          >
+            <div className="bg-slate-900 text-white rounded-2xl shadow-2xl p-4 border border-slate-700 flex items-center gap-4">
+              <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center shrink-0 animate-pulse">
+                <Sparkles size={24} />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold">Need a hand with your library?</h4>
+                <p className="text-xs text-slate-400">I can help you find, move, or summarize anything.</p>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowAutoPrompt(false)}
+                  className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
+                >
+                  <XCircle size={20} />
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowAutoPrompt(false);
+                    setShowChat(true);
+                  }}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-bold transition-colors"
+                >
+                  Chat Now
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Level Up Modal */}
+      <LevelUpModal 
+        isOpen={showLevelUp} 
+        onClose={() => setShowLevelUp(false)} 
+        level={level} 
+      />
+
+      {/* Time Capsule Modal */}
+      <TimeCapsuleModal 
+        isOpen={showTimeCapsule} 
+        onClose={() => setShowTimeCapsule(false)} 
+        bookmark={capsuleBookmark}
+        onChatAbout={(b: any) => {
+          setShowTimeCapsule(false);
+          setShowChat(true);
+          handleChat(`Tell me more about this bookmark from my past: ${b.title} (${b.url})`);
+        }}
+      />
     </div>
   );
 }
 
 // Subcomponents
+
+function LevelUpModal({ isOpen, onClose, level }: any) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm overflow-hidden text-center p-12 relative"
+      >
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-gradient-x"></div>
+        <div className="w-24 h-24 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+          <Trophy size={48} className="animate-bounce" />
+        </div>
+        <h2 className="text-3xl font-black text-slate-900 mb-2 uppercase tracking-tighter">Level Up!</h2>
+        <p className="text-slate-500 mb-8 font-medium">You've reached <span className="text-amber-600 font-bold">Librarian Level {level}</span></p>
+        
+        <div className="space-y-4">
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+              <Zap size={20} />
+            </div>
+            <div className="text-left">
+              <h4 className="text-sm font-bold text-slate-900">New Title Unlocked</h4>
+              <p className="text-xs text-slate-500">{level > 10 ? 'Master Curator' : level > 5 ? 'Senior Archivist' : 'Junior Librarian'}</p>
+            </div>
+          </div>
+        </div>
+
+        <button 
+          onClick={onClose}
+          className="mt-10 w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-lg hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+        >
+          Keep Organizing
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
+function TimeCapsuleModal({ isOpen, onClose, bookmark, onChatAbout }: any) {
+  if (!isOpen || !bookmark) return null;
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 100 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+      >
+        <div className="p-6 bg-gradient-to-br from-pink-500 to-rose-600 text-white">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <Clock size={20} />
+              <span className="text-xs font-bold uppercase tracking-widest opacity-80">Time Capsule</span>
+            </div>
+            <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-colors">
+              <XCircle size={20} />
+            </button>
+          </div>
+          <h2 className="text-2xl font-bold leading-tight">A Blast from the Past!</h2>
+          <p className="text-sm opacity-90 mt-1">Remember this one? You saved it on {new Date(bookmark.dateAdded).toLocaleDateString()}.</p>
+        </div>
+
+        <div className="p-8">
+          <div className="flex items-start gap-4 mb-8">
+            <img 
+              src={`https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}&sz=64`} 
+              alt="" 
+              className="w-12 h-12 rounded-xl bg-slate-50 p-2 shadow-sm shrink-0"
+            />
+            <div className="min-w-0">
+              <h3 className="text-lg font-bold text-slate-900 leading-tight mb-1">{bookmark.title}</h3>
+              <p className="text-sm text-slate-500 truncate">{new URL(bookmark.url).hostname}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <a 
+              href={bookmark.url} 
+              target="_blank" 
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-slate-800 transition-all"
+            >
+              <Eye size={16} />
+              Visit Page
+            </a>
+            <button 
+              onClick={() => onChatAbout(bookmark)}
+              className="flex items-center justify-center gap-2 py-3 bg-pink-50 text-pink-600 border border-pink-100 rounded-2xl font-bold text-sm hover:bg-pink-100 transition-all"
+            >
+              <Sparkles size={16} />
+              AI Summary
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 function CoffeeDigestModal({ isOpen, onClose, bookmarks, isBrewing, onBrewMore, onChatAbout }: any) {
   if (!isOpen) return null;
