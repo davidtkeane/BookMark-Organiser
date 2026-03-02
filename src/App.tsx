@@ -37,6 +37,42 @@ export default function App() {
   });
   const [isArchiving, setIsArchiving] = useState<string | null>(null);
 
+  const GEMINI_MODELS = [
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Fastest & Lowest Cost', costPer1M: 0.10 },
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', description: 'Most Capable & Reasoning', costPer1M: 1.25 },
+    { id: 'gemini-flash-lite-latest', name: 'Gemini Flash Lite', description: 'Ultra-lightweight', costPer1M: 0.05 },
+  ];
+
+  const [selectedModel, setSelectedModel] = useState(() => {
+    return localStorage.getItem('selected_model') || 'gemini-3-flash-preview';
+  });
+
+  const [aiStats, setAiStats] = useState(() => {
+    const saved = localStorage.getItem('ai_stats');
+    return saved ? JSON.parse(saved) : { totalTokens: 0, totalCost: 0, requestCount: 0 };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('selected_model', selectedModel);
+  }, [selectedModel]);
+
+  useEffect(() => {
+    localStorage.setItem('ai_stats', JSON.stringify(aiStats));
+  }, [aiStats]);
+
+  const updateAIStats = (usage: any) => {
+    if (!usage) return;
+    const modelInfo = GEMINI_MODELS.find(m => m.id === selectedModel) || GEMINI_MODELS[0];
+    const tokens = (usage.promptTokenCount || 0) + (usage.candidatesTokenCount || 0);
+    const cost = (tokens / 1000000) * modelInfo.costPer1M;
+    
+    setAiStats(prev => ({
+      totalTokens: prev.totalTokens + tokens,
+      totalCost: prev.totalCost + cost,
+      requestCount: prev.requestCount + 1
+    }));
+  };
+
   const getTimestamp = () => {
     const now = new Date();
     return now.toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
@@ -527,7 +563,7 @@ export default function App() {
       }
 
       const existingFolders = folders.map(f => f.name).filter(n => n !== 'Uncategorized' && n !== 'Imported');
-      const suggestions = await categorizeBookmarksWithAI(uncategorized, existingFolders, strategy);
+      const suggestions = await categorizeBookmarksWithAI(uncategorized, existingFolders, strategy, selectedModel);
       
       const newBookmarks = [...bookmarks];
       suggestions.forEach((s: any) => {
@@ -554,7 +590,7 @@ export default function App() {
         return;
       }
 
-      const enrichments = await enrichBookmarksWithAI(needsEnrichment);
+      const enrichments = await enrichBookmarksWithAI(needsEnrichment, selectedModel);
       
       const newBookmarks = [...bookmarks];
       enrichments.forEach((e: any) => {
@@ -667,14 +703,17 @@ export default function App() {
       }];
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: selectedModel,
         contents: [
-          { role: 'user', parts: [{ text: `You are MarkFlow AI, a helpful assistant for managing bookmarks. The user has ${bookmarks.length} bookmarks. You can help them search, organize, and manage their library. Use the provided tools to interact with the database. If you perform an action, explain what you did.` }] },
+          { role: 'user', parts: [{ text: `You are MarkFlow AI, a helpful assistant for managing bookmarks. The user has ${bookmarks.length} bookmarks. You can help them search, organize, and manage their library. Use the provided tools to interact with the database. If you perform an action, explain what you did. You can also chat about anything else the user wants.` }] },
           ...chatMessages.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
           { role: 'user', parts: [{ text: message }] }
         ],
         config: { tools }
       });
+
+      // Update stats
+      updateAIStats(response.usageMetadata);
 
       let aiResponseText = response.text || "";
       const functionCalls = response.functionCalls;
@@ -690,13 +729,14 @@ export default function App() {
             ).slice(0, 10);
             
             const toolResponse = await ai.models.generateContent({
-              model: "gemini-3-flash-preview",
+              model: selectedModel,
               contents: [
                 { role: 'user', parts: [{ text: message }] },
                 { role: 'model', parts: [{ text: aiResponseText || "Searching..." }] },
                 { role: 'user', parts: [{ text: `Search results for "${query}": ${JSON.stringify(results)}` }] }
               ]
             });
+            updateAIStats(toolResponse.usageMetadata);
             aiResponseText = toolResponse.text || "I found some bookmarks for you.";
           } else if (call.name === 'delete_bookmark') {
             const id = call.args.id as string;
@@ -1630,31 +1670,142 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-8 max-w-2xl w-full shadow-2xl"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
           >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-slate-900">Local Setup Guide (MacBook M3 Pro)</h2>
-              <button onClick={() => setShowSettings(false)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                  <Settings size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">Application Settings</h2>
+                  <p className="text-sm text-slate-500">Configure AI, backups, and appearance</p>
+                </div>
+              </div>
+              <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors">
                 <XCircle size={24} />
               </button>
             </div>
             
-            <div className="space-y-5 text-sm text-slate-700">
-              <p className="text-base">To run this app locally on your MacBook without hours of reconfiguration, follow these exact steps in your terminal:</p>
-              
-              <div className="bg-slate-900 text-slate-300 p-5 rounded-xl font-mono text-sm overflow-x-auto shadow-inner">
-                <p className="text-slate-500"># 1. Clone the repository (or download the files)</p>
-                <p>cd path/to/your/project</p>
-                <br/>
-                <p className="text-slate-500"># 2. Install dependencies</p>
-                <p>npm install</p>
-                <br/>
-                <p className="text-slate-500"># 3. Create a .env file for your Gemini API Key</p>
-                <p>echo 'GEMINI_API_KEY="your_api_key_here"' {'>'} .env</p>
-                <br/>
-                <p className="text-slate-500"># 4. Start the full-stack development server</p>
-                <p>npm run dev</p>
-              </div>
+            <div className="p-6 overflow-y-auto space-y-8">
+              {/* AI Configuration Section */}
+              <section>
+                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <Sparkles size={16} className="text-indigo-600" /> AI Configuration
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Selected Gemini Model</label>
+                    <div className="grid grid-cols-1 gap-3">
+                      {GEMINI_MODELS.map(m => (
+                        <button 
+                          key={m.id}
+                          onClick={() => setSelectedModel(m.id)}
+                          className={`flex items-center justify-between p-4 rounded-xl border transition-all text-left ${selectedModel === m.id ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'}`}
+                        >
+                          <div>
+                            <div className="font-medium text-slate-900">{m.name}</div>
+                            <div className="text-xs text-slate-500">{m.description}</div>
+                          </div>
+                          <div className="text-xs font-mono text-indigo-600 bg-indigo-100 px-2 py-1 rounded">
+                            ${m.costPer1M}/1M tokens
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 rounded-xl p-5 text-slate-300">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Terminal size={14} /> AI Usage Stats (Geek Mode)
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-[10px] text-slate-500 uppercase">Total Tokens</div>
+                        <div className="text-lg font-mono text-emerald-400">{aiStats.totalTokens.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-500 uppercase">Est. Cost</div>
+                        <div className="text-lg font-mono text-emerald-400">${aiStats.totalCost.toFixed(4)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-500 uppercase">Requests</div>
+                        <div className="text-lg font-mono text-emerald-400">{aiStats.requestCount}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Data & Backup Section */}
+              <section>
+                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <Database size={16} className="text-emerald-600" /> Data & Backups
+                </h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                      <h4 className="font-medium text-slate-900">Automatic Hourly Backups</h4>
+                      <p className="text-xs text-slate-500">Saves a local snapshot of your database every hour.</p>
+                    </div>
+                    <button 
+                      onClick={() => setAutoBackupEnabled(!autoBackupEnabled)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${autoBackupEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}
+                    >
+                      {autoBackupEnabled ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                      {autoBackupEnabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                      <h4 className="font-medium text-slate-900">Manage Data</h4>
+                      <p className="text-xs text-slate-500">Import, export, and clear your database.</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setShowSettings(false);
+                        setShowDataModal(true);
+                      }}
+                      className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors"
+                    >
+                      Open Data Manager
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Appearance Section */}
+              <section>
+                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <LayoutGrid size={16} className="text-purple-600" /> Appearance
+                </h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <button onClick={() => setTheme('light')} className={`p-4 rounded-xl border transition-all ${theme === 'light' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
+                    <div className="flex justify-center mb-2"><Info size={20} className="text-slate-400" /></div>
+                    <div className="text-xs font-medium text-center">Light</div>
+                  </button>
+                  <button onClick={() => setTheme('dark')} className={`p-4 rounded-xl border transition-all ${theme === 'dark' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
+                    <div className="flex justify-center mb-2"><Clock size={20} className="text-slate-400" /></div>
+                    <div className="text-xs font-medium text-center">Dark</div>
+                  </button>
+                  <button onClick={() => setTheme('matrix')} className={`p-4 rounded-xl border transition-all ${theme === 'matrix' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white'}`}>
+                    <div className="flex justify-center mb-2"><Terminal size={20} className="text-slate-400" /></div>
+                    <div className="text-xs font-medium text-center">Matrix</div>
+                  </button>
+                </div>
+              </section>
+
+              {/* Local Setup Guide (Moved here) */}
+              <section>
+                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Developer Info</h3>
+                <div className="bg-slate-900 text-slate-300 p-5 rounded-xl font-mono text-xs overflow-x-auto">
+                  <p className="text-slate-500"># Local Setup Guide (MacBook M3 Pro)</p>
+                  <p>cd path/to/your/project</p>
+                  <p>npm install</p>
+                  <p>echo 'GEMINI_API_KEY="..."' {'>'} .env</p>
+                  <p>npm run dev</p>
+                </div>
+              </section>
             </div>
           </motion.div>
         </div>
@@ -1673,7 +1824,12 @@ export default function App() {
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white">
               <div className="flex items-center gap-2">
                 <MessageSquare size={20} />
-                <h2 className="font-semibold">MarkFlow AI Chat</h2>
+                <div>
+                  <h2 className="font-semibold leading-none">MarkFlow AI Chat</h2>
+                  <span className="text-[10px] opacity-75 uppercase tracking-wider">
+                    {GEMINI_MODELS.find(m => m.id === selectedModel)?.name || 'Gemini'}
+                  </span>
+                </div>
               </div>
               <button onClick={() => setShowChat(false)} className="p-1 hover:bg-indigo-500 rounded-md transition-colors">
                 <XCircle size={20} />
