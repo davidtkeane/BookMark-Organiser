@@ -5,6 +5,22 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-03-01
+
+### Added
+- **Magic Sync:** One-click synchronization across all installed local browsers (Chrome, Brave, Safari, Firefox).
+- **AI Deep Clean:** Advanced organization modal allowing users to sort bookmarks by Topic, Action/Intent, or Era using Gemini 3.1 Flash.
+- **Time Machine View:** A new Smart View that sorts all bookmarks chronologically by their original creation date.
+- **System Checks Modal:** A unified, animated progress modal for finding duplicates and batch-checking link health.
+- **Pagination:** Implemented pagination (100 items/page) for both List and Grid views to ensure lightning-fast performance with 10,000+ bookmarks.
+- **Theming:** Added Dark Mode and Matrix themes with persistent `localStorage` saving.
+- **Advanced Data Management:** Added a "Data & Backups" modal for full database JSON backups, restores, and browser-specific exports.
+
+### Changed
+- **Performance Overhaul:** Replaced slow OpenGraph image scraping with Google's High-Res Favicon API, drastically improving Grid View load times.
+- **Uncategorized Logic:** Updated the "Uncategorized" filter to automatically include default browser folders (e.g., "Bookmarks Bar", "Other Bookmarks").
+- **Health Checks:** Link health checking now processes in safe batches of 50 to prevent network freezing and API rate limits.
+
 ## [1.1.0] - 2026-03-01
 
 ### Added

@@ -4,7 +4,8 @@ import {
   Activity, Copy, Sparkles, Settings, ChevronRight, ChevronDown, 
   MoreVertical, CheckCircle2, XCircle, Loader2, Info, Download, UploadCloud, ListTodo,
   Wand2, ArchiveRestore, LayoutGrid, List, Image as ImageIcon, BookOpen, Share2,
-  Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database
+  Chrome, Compass, DownloadCloud, UploadCloud as UploadCloudIcon, Database,
+  RefreshCw, Clock
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { categorizeBookmarksWithAI, enrichBookmarksWithAI } from './services/gemini';
@@ -22,6 +23,8 @@ export default function App() {
   const [showDataModal, setShowDataModal] = useState(false);
   const [showChecksModal, setShowChecksModal] = useState(false);
   const [checkProgress, setCheckProgress] = useState({ current: 0, total: 0, status: '' });
+  const [showOrganizeModal, setShowOrganizeModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark' | 'matrix'>(() => {
     return (localStorage.getItem('theme') as any) || 'light';
@@ -74,6 +77,43 @@ export default function App() {
     if (!confirm("Are you sure you want to delete all bookmarks?")) return;
     await fetch('/api/bookmarks/clear', { method: 'POST' });
     setBookmarks([]);
+  };
+
+  const handleMagicSync = async () => {
+    setIsSyncing(true);
+    try {
+      const browsersToSync = Object.keys(localBrowsers).filter(b => localBrowsers[b]);
+      if (browsersToSync.length === 0) {
+        alert("No local browsers detected to sync.");
+        setIsSyncing(false);
+        return;
+      }
+
+      let totalImported = 0;
+      for (const browser of browsersToSync) {
+        try {
+          const res = await fetch(`/api/import-browser/${browser}`, { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            totalImported += data.count;
+          }
+        } catch (e) {
+          console.error(`Failed to sync ${browser}`, e);
+        }
+      }
+
+      if (totalImported > 0) {
+        alert(`Magic Sync Complete! Synced ${totalImported} bookmarks from ${browsersToSync.join(', ')}.`);
+        const bmsRes = await fetch('/api/bookmarks');
+        const bmsData = await bmsRes.json();
+        setBookmarks(bmsData);
+      } else {
+        alert("Magic Sync finished, but no new bookmarks were found.");
+      }
+    } catch (e) {
+      alert("Error during Magic Sync.");
+    }
+    setIsSyncing(false);
   };
 
   const handleImportLocalBrowser = async (browser: string) => {
@@ -257,6 +297,15 @@ export default function App() {
     
     if (activeTab === 'read-later') filtered = filtered.filter(b => b.readLater);
     
+    // Time Machine View
+    if (activeTab === 'time-machine') {
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = new Date(a.dateAdded || 0).getTime();
+        const dateB = new Date(b.dateAdded || 0).getTime();
+        return dateB - dateA; // Newest first
+      });
+    }
+    
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(b => 
@@ -390,7 +439,8 @@ export default function App() {
     setIsCheckingHealth(false);
   };
 
-  const handleAIOrganize = async () => {
+  const handleAIOrganize = async (strategy: string = 'topic') => {
+    setShowOrganizeModal(false);
     setIsOrganizing(true);
     try {
       const uncategorized = bookmarks.filter(b => b.folder === 'Uncategorized' || b.folder === 'Imported');
@@ -401,7 +451,7 @@ export default function App() {
       }
 
       const existingFolders = folders.map(f => f.name).filter(n => n !== 'Uncategorized' && n !== 'Imported');
-      const suggestions = await categorizeBookmarksWithAI(uncategorized, existingFolders);
+      const suggestions = await categorizeBookmarksWithAI(uncategorized, existingFolders, strategy);
       
       const newBookmarks = [...bookmarks];
       suggestions.forEach((s: any) => {
@@ -522,6 +572,14 @@ export default function App() {
 
         <div className="p-4 flex-1 overflow-y-auto">
           <div className="mb-6 space-y-2">
+            <button 
+              onClick={handleMagicSync} 
+              disabled={isSyncing || !Object.values(localBrowsers).some(Boolean)}
+              className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
+              {isSyncing ? "Syncing Browsers..." : "Magic Sync"}
+            </button>
             <input 
               type="file" 
               accept=".html" 
@@ -581,6 +639,7 @@ export default function App() {
 
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-8 mb-3">Smart Views</h2>
           <div className="space-y-1">
+            <SmartViewItem icon={<Clock size={16} />} label="Time Machine" count={0} color="text-purple-500" onClick={() => setActiveTab('time-machine')} />
             <SmartViewItem icon={<BookOpen size={16} />} label="Read Later" count={readLaterCount} color="text-emerald-500" onClick={() => setActiveTab('read-later')} />
             <SmartViewItem icon={<Copy size={16} />} label="Duplicates" count={duplicatesCount} color="text-amber-500" onClick={() => setActiveTab('duplicates')} />
             <SmartViewItem icon={<Activity size={16} />} label="Dead Links" count={deadLinksCount} color="text-red-500" onClick={() => setActiveTab('dead')} />
@@ -650,7 +709,7 @@ export default function App() {
               {isEnriching ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
               AI Enrich
             </button>
-            <button onClick={handleAIOrganize} disabled={isOrganizing} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200 flex items-center gap-2 disabled:opacity-50">
+            <button onClick={() => setShowOrganizeModal(true)} disabled={isOrganizing} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200 flex items-center gap-2 disabled:opacity-50">
               {isOrganizing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
               AI Organize
             </button>
@@ -826,6 +885,55 @@ export default function App() {
 
         </main>
       </div>
+
+      {/* Advanced Organize Modal */}
+      {showOrganizeModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col"
+          >
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">AI Deep Clean</h2>
+                  <p className="text-sm text-slate-500">Choose how Gemini should organize your links</p>
+                </div>
+              </div>
+              <button onClick={() => setShowOrganizeModal(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors">
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <button onClick={() => handleAIOrganize('topic')} className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
+                <h3 className="font-medium text-slate-900 group-hover:text-indigo-700 flex items-center gap-2">
+                  <Folder size={16} /> Sort by Topic (Default)
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Groups by subject matter (e.g., Tech, Cooking, Finance, Travel).</p>
+              </button>
+              
+              <button onClick={() => handleAIOrganize('action')} className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all group">
+                <h3 className="font-medium text-slate-900 group-hover:text-emerald-700 flex items-center gap-2">
+                  <ListTodo size={16} /> Sort by Action / Intent
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Groups by what you want to do (e.g., To Read, To Watch, Tools, Reference).</p>
+              </button>
+              
+              <button onClick={() => handleAIOrganize('time')} className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50 transition-all group">
+                <h3 className="font-medium text-slate-900 group-hover:text-purple-700 flex items-center gap-2">
+                  <Clock size={16} /> Sort by Era / Time
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Groups by the year or era they belong to (e.g., 2023, 2020s, Pre-2010).</p>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* System Checks Modal */}
       {showChecksModal && (

@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-export async function categorizeBookmarksWithAI(bookmarks: any[], existingFolders: string[]) {
+export async function categorizeBookmarksWithAI(bookmarks: any[], existingFolders: string[], strategy: string = 'topic') {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("Gemini API key is missing. Please add it to your .env file.");
@@ -8,8 +8,15 @@ export async function categorizeBookmarksWithAI(bookmarks: any[], existingFolder
 
   const ai = new GoogleGenAI({ apiKey });
 
+  let strategyInstruction = "Categorize the following bookmarks into appropriate folders based on their topic (e.g., Tech, Cooking, Finance).";
+  if (strategy === 'action') {
+    strategyInstruction = "Categorize the following bookmarks into action-oriented folders based on user intent (e.g., To Read, To Watch, To Buy, Reference, Tools).";
+  } else if (strategy === 'time') {
+    strategyInstruction = "Categorize the following bookmarks into folders based on the era or year they were likely created or are relevant to (e.g., 2023, 2020s, Pre-2010).";
+  }
+
   const prompt = `
-    You are an expert bookmark organizer. Categorize the following bookmarks into appropriate folders.
+    You are an expert bookmark organizer. ${strategyInstruction}
     Existing folders: ${existingFolders.join(', ')}.
     If none of the existing folders fit perfectly, you can suggest a new, concise folder name.
     
