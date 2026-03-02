@@ -1126,33 +1126,33 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-slate-900 rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-slate-700 font-mono text-slate-300 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-slate-200 font-mono text-slate-900 max-h-[90vh] overflow-y-auto"
           >
-            <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
-              <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-3">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
+              <h2 className="text-xl font-bold text-emerald-600 flex items-center gap-3">
                 <Terminal className="w-6 h-6" />
                 Geek Mode: Bookmark Metadata
               </h2>
-              <button onClick={() => setGeekModeBookmark(null)} className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-full transition-colors">
+              <button onClick={() => setGeekModeBookmark(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
                 <XCircle size={24} />
               </button>
             </div>
             
             <div className="space-y-4 text-sm">
-              <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 overflow-x-auto">
-                <pre className="text-emerald-300">
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 overflow-x-auto">
+                <pre className="text-emerald-600 whitespace-pre-wrap break-all">
                   {JSON.stringify(geekModeBookmark, null, 2)}
                 </pre>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                  <span className="block text-xs text-slate-500 mb-1">Date Saved</span>
-                  <span className="text-white">{geekModeBookmark.dateAdded ? new Date(geekModeBookmark.dateAdded).toLocaleString() : 'Unknown'}</span>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <span className="block text-xs text-slate-400 mb-1">Date Saved</span>
+                  <span className="text-slate-900">{geekModeBookmark.dateAdded ? new Date(geekModeBookmark.dateAdded).toLocaleString() : 'Unknown'}</span>
                 </div>
-                <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                  <span className="block text-xs text-slate-500 mb-1">Source Browser</span>
-                  <span className="text-white capitalize">{geekModeBookmark.source || 'Imported'}</span>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <span className="block text-xs text-slate-400 mb-1">Source Browser</span>
+                  <span className="text-slate-900 capitalize">{geekModeBookmark.source || 'Imported'}</span>
                 </div>
               </div>
 
@@ -1167,7 +1167,7 @@ export default function App() {
                     setGeekModeBookmark(updated);
                     await saveBookmarksToDB(newBookmarks);
                   }}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg text-sm font-medium transition-colors border border-slate-700 flex items-center gap-2"
+                  className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-emerald-600 rounded-lg text-sm font-medium transition-colors border border-slate-200 flex items-center gap-2"
                 >
                   <RefreshCw size={16} /> Force Fetch Alternative Icon
                 </button>
@@ -1183,23 +1183,23 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-[#FAFAFA] dark:bg-slate-900 rounded-2xl p-8 max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-y-auto border dark:border-slate-800"
+            className="bg-white rounded-2xl p-8 max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-y-auto border border-slate-200"
           >
-            <div className="flex justify-between items-center mb-6 border-b border-slate-200 dark:border-slate-800 pb-4">
-              <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                <HelpCircle className="text-indigo-600 dark:text-indigo-400 w-8 h-8" />
+            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
+              <h2 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                <HelpCircle className="text-indigo-600 w-8 h-8" />
                 Help & Wiki
               </h2>
-              <button onClick={() => setShowHelpModal(false)} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
+              <button onClick={() => setShowHelpModal(false)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors">
                 <XCircle size={28} />
               </button>
             </div>
             
-            <div className="space-y-8 text-lg leading-relaxed text-slate-800 dark:text-slate-300 font-sans">
+            <div className="space-y-8 text-lg leading-relaxed text-slate-800 font-sans">
               
-              <section className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                  <Database className="text-emerald-600 dark:text-emerald-400" /> 1. Where is my data saved?
+              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <Database className="text-emerald-600" /> 1. Where is my data saved?
                 </h3>
                 <p className="mb-3">
                   Everything you do in MarkFlow is saved <strong>locally on your computer</strong>. 
@@ -1209,9 +1209,9 @@ export default function App() {
                 </p>
               </section>
 
-              <section className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                  <DownloadCloud className="text-blue-600 dark:text-blue-400" /> 2. Why and how should I backup?
+              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <DownloadCloud className="text-blue-600" /> 2. Why and how should I backup?
                 </h3>
                 <p className="mb-3">
                   Because your data lives only on your computer, if you delete it by mistake, it is gone!
@@ -1221,14 +1221,14 @@ export default function App() {
                   <li>Click <strong>Backup Entire Database</strong>.</li>
                   <li>Save this file to a safe folder, like a "Backups" folder on your Desktop.</li>
                 </ul>
-                <p className="text-slate-600 dark:text-slate-400 italic">
+                <p className="text-slate-500 italic">
                   Tip: The app automatically adds the date and time to the file name, so your backups will never overwrite each other!
                 </p>
               </section>
 
-              <section className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                  <RefreshCw className="text-purple-600 dark:text-purple-400" /> 3. Magic Sync vs. Single Import
+              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <RefreshCw className="text-purple-600" /> 3. Magic Sync vs. Single Import
                 </h3>
                 <p className="mb-3">
                   You have two ways to bring your bookmarks into MarkFlow:
@@ -1243,9 +1243,9 @@ export default function App() {
                 </ul>
               </section>
 
-              <section className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                  <Sparkles className="text-indigo-600 dark:text-indigo-400" /> 4. What does AI Deep Clean do?
+              <section className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-2xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <Sparkles className="text-indigo-600" /> 4. What does AI Deep Clean do?
                 </h3>
                 <p className="mb-3">
                   When you have a lot of bookmarks in the "Uncategorized" folder, click <strong>AI Organize</strong>.

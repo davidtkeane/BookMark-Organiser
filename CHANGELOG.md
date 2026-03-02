@@ -5,6 +5,12 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-03-01
+
+### Fixed
+- **Modal Theming:** Fixed a critical UI bug where the Help & Wiki and Geek Mode modals did not correctly adapt to Dark and Matrix themes. They now use theme-aware CSS variables for consistent styling across all modes.
+- **Geek Mode UI:** Refactored Geek Mode to follow the global theme (Light/Dark/Matrix) while maintaining its technical, terminal-style layout.
+
 ## [2.1.0] - 2026-03-01
 
 ### Added
