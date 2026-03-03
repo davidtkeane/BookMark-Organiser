@@ -976,20 +976,22 @@ export default function App() {
   };
 
   const handleAIOrganize = async (strategy: string = 'topic') => {
-    if (!window.confirm("Tip: AI Deep Clean will modify your folders. Have you backed up your data?\n\nClick OK to proceed.")) {
-      return;
-    }
     setShowOrganizeModal(false);
     setIsOrganizing(true);
     try {
-      const uncategorized = bookmarks.filter(b => b.folder === 'Uncategorized' || b.folder === 'Imported');
+      // Trigger auto safety backup before structural changes
+      await fetch('/api/backup/safety', { method: 'POST' });
+
+      const defaultFolders = ['uncategorized', 'imported', 'bookmarks bar', 'other bookmarks', 'mobile bookmarks', 'bookmarks menu', 'imported bookmarks'];
+      const uncategorized = bookmarks.filter(b => !b.folder || defaultFolders.includes(b.folder.toLowerCase().trim()));
+      
       if (uncategorized.length === 0) {
-        alert("No uncategorized bookmarks found!");
+        alert("No unsorted bookmarks found!");
         setIsOrganizing(false);
         return;
       }
 
-      const existingFolders = folders.map(f => f.name).filter(n => n !== 'Uncategorized' && n !== 'Imported');
+      const existingFolders = folders.map(f => f.name).filter(n => !defaultFolders.includes(n.toLowerCase().trim()));
       const suggestions = await categorizeBookmarksWithAI(uncategorized, existingFolders, strategy, selectedModel);
       
       const newBookmarks = [...bookmarks];
@@ -1542,7 +1544,7 @@ export default function App() {
               {isEnriching ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
               AI Enrich
             </button>
-            <button onClick={() => setShowOrganizeModal(true)} disabled={isOrganizing} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200 flex items-center gap-2 disabled:opacity-50">
+            <button onClick={() => setShowOrganizeModal(true)} disabled={isOrganizing} className="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50">
               {isOrganizing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
               AI Organize
             </button>
@@ -1857,49 +1859,96 @@ export default function App() {
       </div>
 
       {/* Advanced Organize Modal */}
+      {/* AI Deep Clean Modal */}
       {showOrganizeModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4"
+          onClick={() => setShowOrganizeModal(false)}
+        >
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col border border-slate-200"
           >
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
-                  <Sparkles size={20} />
+                  <Sparkles size={22} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">AI Deep Clean</h2>
-                  <p className="text-sm text-slate-500">Choose how Gemini should organize your links</p>
+                  <h2 className="text-xl font-bold text-slate-900">AI Deep Clean Engine</h2>
+                  <p className="text-xs text-slate-500 font-medium tracking-tight">Intelligence Strategy: Gemini 3.1 Flash</p>
                 </div>
               </div>
               <button onClick={() => setShowOrganizeModal(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors">
                 <XCircle size={24} />
               </button>
             </div>
-            
-            <div className="p-6 space-y-4">
-              <button onClick={() => handleAIOrganize('topic')} className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
-                <h3 className="font-medium text-slate-900 group-hover:text-indigo-700 flex items-center gap-2">
-                  <Folder size={16} /> Sort by Topic (Default)
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">Groups by subject matter (e.g., Tech, Cooking, Finance, Travel).</p>
-              </button>
-              
-              <button onClick={() => handleAIOrganize('action')} className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all group">
-                <h3 className="font-medium text-slate-900 group-hover:text-emerald-700 flex items-center gap-2">
-                  <ListTodo size={16} /> Sort by Action / Intent
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">Groups by what you want to do (e.g., To Read, To Watch, Tools, Reference).</p>
-              </button>
-              
-              <button onClick={() => handleAIOrganize('time')} className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50 transition-all group">
-                <h3 className="font-medium text-slate-900 group-hover:text-purple-700 flex items-center gap-2">
-                  <Clock size={16} /> Sort by Era / Time
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">Groups by the year or era they belong to (e.g., 2023, 2020s, Pre-2010).</p>
-              </button>
+
+            <div className="p-8 space-y-6">
+              <div className="bg-indigo-600 text-white rounded-2xl p-6 shadow-lg shadow-indigo-200 flex items-center gap-6">
+                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 border border-white/20">
+                  <ShieldCheck size={32} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-1 tracking-tight">Mission: Intellectual Order</h4>
+                  <p className="text-sm text-indigo-100 leading-relaxed opacity-90">
+                    The AI will reorganize your library by moving bookmarks into new folders. Your original browser bookmarks remain untouched.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <button 
+                  onClick={() => handleAIOrganize('topic')} 
+                  className="flex items-center gap-4 p-5 rounded-2xl border border-slate-100 bg-slate-50/50 hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-md transition-all text-left group"
+                >
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                    <Folder size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm mb-0.5 uppercase tracking-tight">Sort by Topic (Default)</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">Groups links by subject matter like Tech, Cooking, Finance, or Travel.</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => handleAIOrganize('action')} 
+                  className="flex items-center gap-4 p-5 rounded-2xl border border-slate-100 bg-slate-50/50 hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-md transition-all text-left group"
+                >
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                    <ListTodo size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm mb-0.5 uppercase tracking-tight">Sort by Action / Intent</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">Groups by utility: To Read, To Watch, Tools, or Reference Material.</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => handleAIOrganize('time')} 
+                  className="flex items-center gap-4 p-5 rounded-2xl border border-slate-100 bg-slate-50/50 hover:border-purple-300 hover:bg-purple-50 hover:shadow-md transition-all text-left group"
+                >
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:bg-purple-600 group-hover:text-white transition-all">
+                    <Clock size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm mb-0.5 uppercase tracking-tight">Sort by Era / Chronology</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">Groups by historical significance: 2024 Saves, 2020s Archive, or Legacy Links.</p>
+                  </div>
+                </button>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-xl">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center shrink-0 border border-white/5">
+                  <Info size={20} className="text-indigo-400" />
+                </div>
+                <div className="text-[11px] text-slate-300 leading-relaxed font-medium">
+                  <strong className="text-white uppercase tracking-[0.2em] block mb-1 font-black">Safety Protocol:</strong>
+                  MarkFlow automatically creates a <span className="text-indigo-400 font-black">JSON Backup</span> in your backups folder before the engine reorganizes your data.
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -2048,8 +2097,12 @@ export default function App() {
                 ]}
               />
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.26.0)</h4>
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.27.0)</h4>
                 <ul className="space-y-1">
+                  <li className="text-xs text-slate-600 flex items-center gap-2">
+                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
+                    AI Organize Overhaul (Tactical Cards & Safety Backups)
+                  </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
                     Automated Safety Backups (Created before any deletion)
@@ -2061,10 +2114,6 @@ export default function App() {
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
                     Exhaustive Deep Scan Engine (Loop through 10k+ links)
-                  </li>
-                  <li className="text-xs text-slate-600 flex items-center gap-2">
-                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Theme-Aware Status Badges & White-Text Clarity Fix
                   </li>
                 </ul>
               </div>

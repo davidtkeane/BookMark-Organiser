@@ -5,6 +5,18 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.27.0] - 2026-03-02
+
+### Added
+- **AI Organize Tactical Overhaul**: Rebuilt the AI Deep Clean interface to match the high-fidelity Command Center style.
+    - **Mission-Driven Design**: Integrated a "Mission: Intellectual Order" banner with "Sorting Room" context.
+    - **Strategy Action Cards**: Replaced standard buttons with descriptive, hover-interactive cards for Topic, Action, and Era sorting.
+    - **Automated Reorganization Backup**: The engine now automatically triggers a full JSON safety snapshot before Gemini begins moving bookmarks between folders.
+- **Enhanced Folder Intelligence**: Synchronized the AI Organize folder detection logic with the v3.19.0 case-insensitive standards, ensuring all browser default folders are correctly identified for sorting.
+
+### Changed
+- **Unified Header UI**: Standardized the "AI Organize" header button to use the same light indigo aesthetic as "AI Enrich" and "Export View" for a perfectly balanced visual layout.
+
 ## [3.26.0] - 2026-03-02
 
 ### Added

@@ -353,6 +353,15 @@ async function startServer() {
   });
 
   // Automatic Backup Trigger
+  app.post("/api/backup/safety", (req, res) => {
+    try {
+      createSafetyBackup();
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   app.post("/api/database/auto-backup", (req, res) => {
     try {
       const dbPath = path.join(process.cwd(), 'bookmarks.db');
