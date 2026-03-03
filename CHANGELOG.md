@@ -5,6 +5,13 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.28.0] - 2026-03-02
+
+### Added
+- **Integrated Roadmap Dashboard**: Relocated the application Roadmap from a standalone modal into a dedicated tab within the Settings "Command Center".
+    - **Unified UI**: Consolidates all strategic information (Phases, TODOs, and Changelogs) into one professional, multi-tabbed interface.
+    - **Sidebar Declutter**: Removed the redundant "View Roadmap" button from the primary navigation rail.
+
 ## [3.27.0] - 2026-03-02
 
 ### Added

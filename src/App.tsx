@@ -1363,10 +1363,6 @@ export default function App() {
               <UploadCloudIcon size={16} />
               Import HTML File
             </button>
-            <button onClick={() => setShowRoadmap(true)} className="w-full py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
-              <ListTodo size={16} />
-              View Roadmap
-            </button>
           </div>
 
           {(localBrowsers.chrome || localBrowsers.brave || localBrowsers.safari || localBrowsers.firefox) && (
@@ -1442,7 +1438,7 @@ export default function App() {
             <span>Settings</span>
           </button>
           <div className="px-2 pt-2 text-[10px] text-slate-400 font-medium tracking-widest text-center opacity-50">
-            VERSION 3.10.0
+            VERSION 3.28.0
           </div>
         </div>
       </div>
@@ -1999,187 +1995,6 @@ export default function App() {
       )}
 
       {/* Roadmap Modal */}
-      {showRoadmap && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-8 max-w-3xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
-                <ListTodo className="text-indigo-600" />
-                The Ultimate Bookmark App Roadmap
-              </h2>
-              <button onClick={() => setShowRoadmap(false)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors">
-                <XCircle size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              <RoadmapSection 
-                title="Phase 1: The Great Convergence (Storage & Import)" 
-                status="active"
-                items={[
-                  { text: "SQLite Database Persistence (Save everything permanently)", done: true },
-                  { text: "Universal HTML Import (Drag-and-drop fallback for web/exported files)", done: true },
-                  { text: "Magic Sync (Multi-Browser Auto-Importer for Chrome, Brave, Firefox, Safari)", done: true },
-                ]}
-              />
-              <RoadmapSection 
-                title="Phase 2: The AI Brain (Organization & Search)" 
-                status="active"
-                items={[
-                  { text: "Advanced Full-Text Search (Fuzzy search, tag search, content search)", done: true },
-                  { text: "AI Deep Clean (Sort by Topic, Action/Intent, or Era)", done: true },
-                  { text: "AI Smart Tags & Summaries (Gemini generates tags and 1-sentence summaries)", done: true },
-                ]}
-              />
-              <RoadmapSection 
-                title="Phase 3: Health & Maintenance (Cleaning)" 
-                status="active"
-                items={[
-                  { text: "Dead Link Checker (Batch ping URLs in the background)", done: true },
-                  { text: "Advanced Deduplication (Merge exact and fuzzy matches)", done: true },
-                  { text: "Wayback Machine Resurrect (Fix dead links automatically)", done: true },
-                ]}
-              />
-              <RoadmapSection 
-                title="Phase 4: The Ultimate UI (Visuals)" 
-                status="active"
-                items={[
-                  { text: "Visual Grid View (High-Res Google Favicons for 10k+ performance)", done: true },
-                  { text: "Time Machine View (Sort chronologically by original creation date)", done: true },
-                  { text: "Pagination & Theming (Dark Mode, Matrix Theme, 100 items/page)", done: true },
-                ]}
-              />
-              <RoadmapSection 
-                title="Phase 5: The Smart Assistant (Intelligence)" 
-                status="active"
-                items={[
-                  { text: "AI Chat with Library (Natural language search & organization)", done: true },
-                  { text: "Ghost Archiving (Local HTML copies of bookmarked pages)", done: true },
-                  { text: "Morning Coffee Digest (Daily curated bookmark selection)", done: true },
-                  { text: "Duplicate DNA Detection (Fuzzy content matching)", done: true },
-                  { text: "Librarian Level-Up (Gamification & XP system)", done: true },
-                  { text: "Time Capsule Trigger (Surfacing old memories)", done: true },
-                  { text: "Automatic Database Backups (Hourly local snapshots)", done: true },
-                  { text: "Interactive AI Search Tool with Auto-Prompt (Proactive help)", done: true },
-                  { text: "Custom Matrix Logo Upload & Processing (Digital Rain Filter)", done: true },
-                ]}
-              />
-              <RoadmapSection 
-                title="Phase 6: The Ultimate Experience (Intelligence)" 
-                status="active"
-                items={[
-                  { text: "Visual Bento Grid View (Dynamic asymmetrical layout)", done: true },
-                  { text: "AI-Powered Semantic Search (Find by meaning, not just keywords)", done: true },
-                  { text: "Bookmark Pop-out Detail View (Metadata & Live Preview)", done: true },
-                  { text: "Checked/Unchecked Status (Track your progress)", done: true },
-                  { text: "Grid Style Toggle (Standard vs Bento View)", done: true },
-                  { text: "Title Editing & Auto-Fetch (Magic Title)", done: true },
-                  { text: "Bookmark Intelligence Editor (Multi-tab editing & AI Insights)", done: true },
-                  { text: "AI Keyword & Tag Generation (Deep content analysis)", done: true },
-                ]}
-              />
-              <RoadmapSection 
-                title="Phase 7: The Next Level (In Progress)" 
-                status="active"
-                items={[
-                  { text: "AI Personalization (Address user by name)", done: true },
-                  { text: "Universal Command Center (Tabbed Settings & Backups)", done: true },
-                  { text: "H3llCoin Ecosystem Integration", done: true },
-                  { text: "Tactical Maintenance Dashboard (Quick-Scan & Purge)", done: true },
-                  { text: "Exhaustive Deep Scan Engine (Multi-batch validation)", done: true },
-                  { text: "Automated Safety Backup Engine (Pre-Deletion Snapshots)", done: true },
-                  { text: "iOS Standalone App (App Store Release)", done: false },
-                  { text: "Browser Extension (Save directly to MarkFlow)", done: false },
-                ]}
-              />
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.27.0)</h4>
-                <ul className="space-y-1">
-                  <li className="text-xs text-slate-600 flex items-center gap-2">
-                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    AI Organize Overhaul (Tactical Cards & Safety Backups)
-                  </li>
-                  <li className="text-xs text-slate-600 flex items-center gap-2">
-                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Automated Safety Backups (Created before any deletion)
-                  </li>
-                  <li className="text-xs text-slate-600 flex items-center gap-2">
-                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Tactical Dashboard Actions (Quick Backup, Scan, & Purge)
-                  </li>
-                  <li className="text-xs text-slate-600 flex items-center gap-2">
-                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Exhaustive Deep Scan Engine (Loop through 10k+ links)
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="mt-12 border-t border-slate-100 pt-8">
-              <h2 className="text-2xl font-semibold text-slate-900 flex items-center gap-2 mb-6">
-                <ListTodo className="text-emerald-600" />
-                Current TODO List
-              </h2>
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">High Priority</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-3 text-slate-700">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                      <span className="line-through opacity-50">Bookmark Intelligence Editor (v3.0.0)</span>
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-700">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                      <span className="line-through opacity-50">AI Keyword Generation (v3.0.0)</span>
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-700">
-                      <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                      <span>Browser Extension (Chrome/Firefox)</span>
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-700">
-                      <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                      <span>Windows/Linux Magic Sync</span>
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-700">
-                      <div className="w-2 h-2 rounded-full bg-indigo-500 font-bold">NEW</div>
-                      iOS Standalone App (App Store Release)
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-400 line-through">
-                      <div className="w-2 h-2 rounded-full bg-slate-300"></div>
-                      Visual Bento Grid View
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-400 line-through">
-                      <div className="w-2 h-2 rounded-full bg-slate-300"></div>
-                      AI-Powered Semantic Search
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-400 line-through">
-                      <div className="w-2 h-2 rounded-full bg-slate-300"></div>
-                      Bookmark Detail Pop-out
-                    </li>
-                  </ul>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Enhancements</h3>
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-3 text-slate-700">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                      Add PDF export for Ghost Archives
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-700">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                      Implement "Vibe Search" (Semantic Search)
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       {/* Geek Mode Modal (Enhanced Bookmark Editor) */}
       {geekModeBookmark && (
@@ -3051,6 +2866,7 @@ export default function App() {
                   { id: 'interface', label: 'Interface', icon: LayoutGrid },
                   { id: 'intelligence', label: 'Intelligence', icon: Brain },
                   { id: 'developer', label: 'Developer', icon: Terminal },
+                  { id: 'roadmap', label: 'Roadmap', icon: ListTodo },
                   { id: 'support', label: 'Support', icon: Gift },
                 ].map(tab => (
                   <button
@@ -3385,6 +3201,115 @@ export default function App() {
                         </p>
                       </div>
                     </section>
+                  </motion.div>
+                )}
+
+                {activeSettingsTab === 'roadmap' && (
+                  <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-10 pb-8">
+                    <div className="space-y-6">
+                      <RoadmapSection 
+                        title="Phase 1: Convergence (Storage)" 
+                        status="active"
+                        items={[
+                          { text: "SQLite Database Persistence", done: true },
+                          { text: "Universal HTML Import", done: true },
+                          { text: "Magic Sync (Multi-Browser Auto-Importer)", done: true },
+                        ]}
+                      />
+                      <RoadmapSection 
+                        title="Phase 2: The AI Brain (Intelligence)" 
+                        status="active"
+                        items={[
+                          { text: "Advanced Full-Text Search", done: true },
+                          { text: "AI Deep Clean (Logical Sorting)", done: true },
+                          { text: "AI Smart Tags & Summaries", done: true },
+                        ]}
+                      />
+                      <RoadmapSection 
+                        title="Phase 3: Health (Cleaning)" 
+                        status="active"
+                        items={[
+                          { text: "Dead Link Checker (Batch Validation)", done: true },
+                          { text: "Advanced Deduplication Engine", done: true },
+                          { text: "Wayback Machine Resurrect", done: true },
+                        ]}
+                      />
+                      <RoadmapSection 
+                        title="Phase 4: The Ultimate UI (Visuals)" 
+                        status="active"
+                        items={[
+                          { text: "Visual Grid View (High-Res Favicons)", done: true },
+                          { text: "Time Machine View (Chronological)", done: true },
+                          { text: "Pagination & Theming (Ranger Theme)", done: true },
+                        ]}
+                      />
+                      <RoadmapSection 
+                        title="Phase 5: Smart Assistant (Knowledge)" 
+                        status="active"
+                        items={[
+                          { text: "AI Chat with Personalized Command", done: true },
+                          { text: "Ghost Archiving (Local HTML copies)", done: true },
+                          { text: "Morning Coffee Digest (Curation)", done: true },
+                          { text: "Automated Database Backups (Hourly)", done: true },
+                        ]}
+                      />
+                      <RoadmapSection 
+                        title="Phase 6: The Ultimate Experience" 
+                        status="active"
+                        items={[
+                          { text: "Visual Bento Grid (Dynamic Layout)", done: true },
+                          { text: "AI-Powered Semantic Search", done: true },
+                          { text: "Bookmark Intelligence Editor", done: true },
+                          { text: "AI Keyword & Tag Generation", done: true },
+                        ]}
+                      />
+                      <RoadmapSection 
+                        title="Phase 7: The Next Level (In Progress)" 
+                        status="active"
+                        items={[
+                          { text: "AI Personalization (Address user by name)", done: true },
+                          { text: "Universal Command Center (Tabbed Modals)", done: true },
+                          { text: "H3llCoin Ecosystem Integration", done: true },
+                          { text: "Tactical Maintenance Dashboard", done: true },
+                          { text: "Exhaustive Deep Scan Engine", done: true },
+                          { text: "Automated Safety Backup Engine", done: true },
+                          { text: "iOS Standalone App (App Store Release)", done: false },
+                          { text: "Browser Extension (Save directly)", done: false },
+                        ]}
+                      />
+                    </div>
+
+                    <div className="p-6 bg-slate-900 text-white rounded-3xl border border-slate-800 shadow-xl">
+                      <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-4">Engineering TODO List</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">High Priority</h5>
+                          <ul className="space-y-2 text-xs">
+                            <li className="flex items-center gap-2 opacity-50 line-through"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Intelligence Editor</li>
+                            <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />Browser Extension</li>
+                            <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />Windows/Linux Magic Sync</li>
+                            <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />iOS Standalone App</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Enhancements</h5>
+                          <ul className="space-y-2 text-xs text-slate-400">
+                            <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-slate-700" />PDF Export for Archives</li>
+                            <li className="flex items-center gap-2 text-emerald-400"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Vibe-Based AI Search</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Recent Changelog (v3.27.0)</h4>
+                      <ul className="space-y-2">
+                        <li className="text-[11px] text-slate-600 flex items-center gap-2"><div className="w-1 h-1 bg-indigo-500 rounded-full" /> AI Organize Overhaul (Tactical Cards)</li>
+                        <li className="text-[11px] text-slate-600 flex items-center gap-2"><div className="w-1 h-1 bg-indigo-500 rounded-full" /> Automated Safety Backups (Pre-Deletion)</li>
+                        <li className="text-[11px] text-slate-600 flex items-center gap-2"><div className="w-1 h-1 bg-indigo-500 rounded-full" /> Tactical Dashboard Actions (Quick-Purge)</li>
+                        <li className="text-[11px] text-slate-600 flex items-center gap-2"><div className="w-1 h-1 bg-indigo-500 rounded-full" /> Exhaustive Deep Scan Engine (10k+ Batch)</li>
+                      </ul>
+                    </div>
                   </motion.div>
                 )}
 
