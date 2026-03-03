@@ -5,6 +5,11 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.29.2] - 2026-03-02
+
+### Fixed
+- **Permanent Browser Logo Fix**: Transitioned all local browser icons (Chrome, Brave, Safari, Firefox) from external URLs to locally-hosted SVG assets in the `public/` directory. This resolves "broken image" issues caused by external link instability or security policies.
+
 ## [3.29.1] - 2026-03-02
 
 ### Fixed
