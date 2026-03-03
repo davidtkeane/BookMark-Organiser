@@ -1531,7 +1531,7 @@ export default function App() {
             )}
             <button onClick={handleRunChecks} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
               <Activity size={16} className="text-slate-400" />
-              Run System Checks
+              Scan Now
             </button>
             <div className="h-6 w-px bg-slate-200 mx-1"></div>
             <button onClick={handleExportCollection} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
