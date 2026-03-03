@@ -5,6 +5,18 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.19.0] - 2026-03-02
+
+### Added
+- **Granular Intelligence Scans**: Integrated individual "Scan" buttons into every dashboard stat card.
+    - **Deep Dead-Link Scan**: Added a high-capacity link validator that can check up to 500 links per run, ensuring thorough library maintenance.
+    - **Targeted Duplicate Scanning**: Allows users to re-run deduplication logic independently.
+    - **State Refresh**: Added a "Scan" action to Total Bookmarks to force-synchronize with the database.
+- **Dynamic Uncategorized Filter**: Upgraded the "Uncategorized" logic to be case-insensitive and include all common browser default folders (e.g., 'Bookmarks bar', 'Other bookmarks'). This fixes an issue where thousands of bookmarks were being missed by the organizer.
+
+### Fixed
+- **Status Badge Visibility**: Refactored `StatusBadge` to use theme-aware color variables. "Duplicate" and "Dead Link" notices now feature high-contrast, bold typography that is clearly readable in Dark and Ranger modes.
+
 ## [3.18.0] - 2026-03-02
 
 ### Changed

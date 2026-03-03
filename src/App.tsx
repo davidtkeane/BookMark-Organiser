@@ -644,8 +644,8 @@ export default function App() {
   const duplicatesCount = bookmarks.filter(b => b.status === 'duplicate').length;
   const deadLinksCount = bookmarks.filter(b => b.status === 'dead').length;
   const uncategorizedCount = bookmarks.filter(b => {
-    const defaultFolders = ['Uncategorized', 'Imported', 'Bookmarks Bar', 'Other Bookmarks', 'Mobile Bookmarks', 'Bookmarks Menu'];
-    return !b.folder || defaultFolders.includes(b.folder);
+    const defaultFolders = ['uncategorized', 'imported', 'bookmarks bar', 'other bookmarks', 'mobile bookmarks', 'bookmarks menu', 'imported bookmarks'];
+    return !b.folder || defaultFolders.includes(b.folder.toLowerCase().trim());
   }).length;
   const readLaterCount = bookmarks.filter(b => b.readLater).length;
 
@@ -663,8 +663,8 @@ export default function App() {
     
     // Fix uncategorized logic to include common default browser folders
     if (activeTab === 'uncategorized') {
-      const defaultFolders = ['Uncategorized', 'Imported', 'Bookmarks Bar', 'Other Bookmarks', 'Mobile Bookmarks', 'Bookmarks Menu'];
-      filtered = filtered.filter(b => !b.folder || defaultFolders.includes(b.folder));
+      const defaultFolders = ['uncategorized', 'imported', 'bookmarks bar', 'other bookmarks', 'mobile bookmarks', 'bookmarks menu', 'imported bookmarks'];
+      filtered = filtered.filter(b => !b.folder || defaultFolders.includes(b.folder.toLowerCase().trim()));
     }
     
     if (activeTab === 'read-later') filtered = filtered.filter(b => b.readLater);
@@ -714,6 +714,75 @@ export default function App() {
   const totalPages = Math.ceil(filteredBookmarks.length / itemsPerPage);
 
   // Actions
+  const handleRefreshLibrary = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/bookmarks');
+      const data = await res.json();
+      setBookmarks(data);
+      awardXp(10);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFullDeadLinkScan = async () => {
+    const unchecked = bookmarks.filter(b => b.status === 'unknown' || !b.status);
+    if (unchecked.length === 0) {
+      alert("All links have already been checked.");
+      return;
+    }
+
+    if (!confirm(`Full Dead Link Scan: This will check ${Math.min(unchecked.length, 500)} links. This may take a minute. Proceed?`)) {
+      return;
+    }
+
+    setShowChecksModal(true);
+    setCheckProgress({ current: 0, total: 100, status: 'Initializing deep scan...' });
+
+    const newBookmarks = [...bookmarks];
+    const targetBatch = unchecked.slice(0, 500); // Check up to 500 at once
+    let checkedCount = 0;
+
+    for (let i = 0; i < targetBatch.length; i += 10) {
+      const batch = targetBatch.slice(i, i + 10);
+      await Promise.all(batch.map(async (b) => {
+        try {
+          const res = await fetch('/api/check-health', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: b.url })
+          });
+          const data = await res.json();
+          // Find the bookmark in newBookmarks and update it
+          const idx = newBookmarks.findIndex(x => x.id === b.id);
+          if (idx !== -1) newBookmarks[idx].status = data.status;
+        } catch (e) {
+          const idx = newBookmarks.findIndex(x => x.id === b.id);
+          if (idx !== -1) newBookmarks[idx].status = 'dead';
+        }
+        checkedCount++;
+        setCheckProgress({ 
+          current: Math.floor((checkedCount / targetBatch.length) * 100), 
+          total: 100, 
+          status: `Deep scanning link ${checkedCount} of ${targetBatch.length}...` 
+        });
+      }));
+    }
+
+    setCheckProgress({ current: 100, total: 100, status: 'Finalizing scan...' });
+    setBookmarks(newBookmarks);
+    await saveBookmarksToDB(newBookmarks);
+    awardXp(Math.floor(targetBatch.length / 2));
+    
+    setTimeout(() => {
+      setShowChecksModal(false);
+      setActiveTab('dead');
+    }, 1500);
+  };
+
   const handleRunChecks = async () => {
     setShowChecksModal(true);
     setCheckProgress({ current: 0, total: 100, status: 'Finding duplicates...' });
@@ -1470,7 +1539,12 @@ export default function App() {
 
           {/* Stats Row */}
           <div className="grid grid-cols-4 gap-4 mb-8">
-            <StatCard title="Total Bookmarks" value={bookmarks.length} icon={<LinkIcon size={20} />} />
+            <StatCard 
+              title="Total Bookmarks" 
+              value={bookmarks.length} 
+              icon={<LinkIcon size={20} />} 
+              onScan={handleRefreshLibrary}
+            />
             <StatCard 
               title="Duplicates Found" 
               value={duplicatesCount} 
@@ -1478,6 +1552,7 @@ export default function App() {
               trend={duplicatesCount > 0 ? "Needs attention" : "All clean"} 
               trendColor={duplicatesCount > 0 ? "text-amber-600" : "text-emerald-600"} 
               onClick={() => setShowDuplicateModal(true)}
+              onScan={handleFindDuplicates}
             />
             <StatCard 
               title="Dead Links" 
@@ -1486,8 +1561,17 @@ export default function App() {
               trend="404s & Timeouts" 
               trendColor={deadLinksCount > 0 ? "text-red-600" : "text-slate-400"} 
               onClick={() => setShowDeadLinkModal(true)}
+              onScan={handleFullDeadLinkScan}
             />
-            <StatCard title="Uncategorized" value={uncategorizedCount} icon={<Folder size={20} />} trend="Ready for AI sorting" trendColor={uncategorizedCount > 0 ? "text-indigo-600" : "text-slate-400"} />
+            <StatCard 
+              title="Uncategorized" 
+              value={uncategorizedCount} 
+              icon={<Folder size={20} />} 
+              trend="Ready for AI sorting" 
+              trendColor={uncategorizedCount > 0 ? "text-indigo-600" : "text-slate-400"} 
+              onClick={() => setActiveTab('uncategorized')}
+              onScan={() => setActiveTab('uncategorized')}
+            />
           </div>
 
           {/* Action Area */}
@@ -3864,15 +3948,28 @@ function SmartViewItem({ icon, label, count, color, onClick }: { icon: React.Rea
   );
 }
 
-function StatCard({ title, value, icon, trend, trendColor, onClick }: { title: string, value: number, icon: React.ReactNode, trend?: string, trendColor?: string, onClick?: () => void }) {
+function StatCard({ title, value, icon, trend, trendColor, onClick, onScan }: { title: string, value: number, icon: React.ReactNode, trend?: string, trendColor?: string, onClick?: () => void, onScan?: (e: React.MouseEvent) => void }) {
   return (
     <div 
       onClick={onClick}
-      className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all ${onClick ? 'cursor-pointer hover:border-indigo-300 hover:shadow-md active:scale-[0.98]' : ''}`}
+      className={`group relative bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all ${onClick ? 'cursor-pointer hover:border-indigo-300 hover:shadow-md active:scale-[0.98]' : ''}`}
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-slate-500">{title}</h3>
-        <div className="text-slate-400">{icon}</div>
+        <div className="flex items-center gap-2">
+          {onScan && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onScan(e);
+              }}
+              className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[9px] font-black uppercase tracking-widest border border-indigo-100 opacity-0 group-hover:opacity-100 transition-all hover:bg-indigo-600 hover:text-white"
+            >
+              Scan
+            </button>
+          )}
+          <div className="text-slate-400">{icon}</div>
+        </div>
       </div>
       <div className="flex items-baseline gap-2">
         <span className="text-3xl font-light text-slate-900">{value.toLocaleString()}</span>
@@ -3905,44 +4002,44 @@ function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case 'alive':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-100">
-          <CheckCircle2 size={12} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100 shadow-sm">
+          <CheckCircle2 size={10} />
           Active
         </span>
       );
     case 'dead':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 text-red-700 text-xs font-medium border border-red-100">
-          <XCircle size={12} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 text-red-700 text-[10px] font-bold border border-red-100 shadow-sm">
+          <XCircle size={10} />
           Dead Link
         </span>
       );
     case 'duplicate':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-50 text-amber-700 text-xs font-medium border border-amber-100">
-          <Copy size={12} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-100 shadow-sm">
+          <Copy size={10} />
           Duplicate
         </span>
       );
     case 'redirect':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-medium border border-blue-100">
-          <Activity size={12} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100 shadow-sm">
+          <Activity size={10} />
           Redirects
         </span>
       );
     case 'archived':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 text-purple-700 text-xs font-medium border border-purple-100">
-          <ArchiveRestore size={12} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-100 shadow-sm">
+          <ArchiveRestore size={10} />
           Archived
         </span>
       );
     case 'unknown':
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 text-slate-500 text-xs font-medium border border-slate-200">
-          <Activity size={12} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 text-slate-500 text-[10px] font-bold border border-slate-200 shadow-sm">
+          <Activity size={10} />
           Unchecked
         </span>
       );
