@@ -5,6 +5,11 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.30.0] - 2026-03-03
+
+### Changed
+- **Consolidated Browser Imports**: Relocated the "Magic Sync" and "Import HTML" actions to be nested under the "Local Browsers" section in the sidebar. This reorganization groups all browser-related ingestion tools into one logical workspace, improving the vertical flow of the primary navigation.
+
 ## [3.29.3] - 2026-03-02
 
 ### Fixed
