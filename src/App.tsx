@@ -322,7 +322,40 @@ export default function App() {
   };
 
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [showDeadLinkModal, setShowDeadLinkModal] = useState(false);
   const [isResolvingDuplicates, setIsResolvingDuplicates] = useState(false);
+  const [isResolvingDeadLinks, setIsResolvingDeadLinks] = useState(false);
+
+  const handleAutoResolveDeadLinks = async () => {
+    setIsResolvingDeadLinks(true);
+    try {
+      const deadLinks = bookmarks.filter(b => b.status === 'dead');
+      const idsToDelete = deadLinks.map(b => b.id);
+
+      if (idsToDelete.length > 0) {
+        await fetch('/api/bookmarks/delete-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: idsToDelete })
+        });
+        
+        const bmsRes = await fetch('/api/bookmarks');
+        const bmsData = await bmsRes.json();
+        setBookmarks(bmsData);
+        
+        awardXp(idsToDelete.length);
+        alert(`Successfully removed ${idsToDelete.length} dead links from the library.`);
+      } else {
+        alert("No dead links found to resolve.");
+      }
+      setShowDeadLinkModal(false);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to resolve dead links.");
+    } finally {
+      setIsResolvingDeadLinks(false);
+    }
+  };
 
   const handleAutoResolveDuplicates = async () => {
     setIsResolvingDuplicates(true);
@@ -1440,7 +1473,14 @@ export default function App() {
               trendColor={duplicatesCount > 0 ? "text-amber-600" : "text-emerald-600"} 
               onClick={() => setShowDuplicateModal(true)}
             />
-            <StatCard title="Dead Links" value={deadLinksCount} icon={<AlertTriangle size={20} />} trend="404s & Timeouts" trendColor={deadLinksCount > 0 ? "text-red-600" : "text-slate-400"} />
+            <StatCard 
+              title="Dead Links" 
+              value={deadLinksCount} 
+              icon={<AlertTriangle size={20} />} 
+              trend="404s & Timeouts" 
+              trendColor={deadLinksCount > 0 ? "text-red-600" : "text-slate-400"} 
+              onClick={() => setShowDeadLinkModal(true)}
+            />
             <StatCard title="Uncategorized" value={uncategorizedCount} icon={<Folder size={20} />} trend="Ready for AI sorting" trendColor={uncategorizedCount > 0 ? "text-indigo-600" : "text-slate-400"} />
           </div>
 
@@ -2704,6 +2744,89 @@ export default function App() {
                 <div className="text-[11px] text-slate-300 leading-relaxed font-medium">
                   <strong className="text-white uppercase tracking-[0.2em] block mb-1 font-black">Intelligence Protocol:</strong>
                   Names and folders can be different, but if the <span className="text-indigo-400 font-black">URL</span> is identical, MarkFlow identifies them as redundant. The oldest version is preserved to maintain your earliest history.
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Dead Link Resolution Modal */}
+      {showDeadLinkModal && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4"
+          onClick={() => setShowDeadLinkModal(false)}
+        >
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col border border-slate-200"
+          >
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center">
+                  <AlertTriangle size={22} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Dead Link Resolution Center</h2>
+                  <p className="text-xs text-slate-500 font-medium tracking-tight">Strategy: Status Validation (404/Timeout)</p>
+                </div>
+              </div>
+              <button onClick={() => setShowDeadLinkModal(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors">
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            <div className="p-8 space-y-6">
+              <div className="bg-rose-600 text-white rounded-2xl p-6 shadow-lg shadow-rose-200 flex items-center gap-6">
+                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 border border-white/20">
+                  <ShieldCheck size={32} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-1 tracking-tight">This is the "Sorting Room"</h4>
+                  <p className="text-sm text-rose-100 leading-relaxed opacity-90">
+                    Cleaning your library here will not affect your browser's original bookmarks. We are removing broken endpoints to keep MarkFlow high-performance!
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50 hover:border-emerald-200 transition-all group">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                    <DownloadCloud size={20} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">Safety First: Backup</h4>
+                  <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">Highly recommended! Download a full JSON snapshot before purging dead links.</p>
+                  <button onClick={handleBackup} className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all active:scale-95">
+                    Download Backup
+                  </button>
+                </div>
+
+                <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50 hover:border-rose-200 transition-all group">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm group-hover:bg-rose-500 group-hover:text-white transition-all">
+                    <Trash2 size={20} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">Purge Dead Links</h4>
+                  <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">Permanently deletes all bookmarks currently marked as "Dead" (404/Timeout).</p>
+                  <button 
+                    onClick={handleAutoResolveDeadLinks}
+                    disabled={isResolvingDeadLinks}
+                    className="w-full py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isResolvingDeadLinks ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    {isResolvingDeadLinks ? 'Resolving...' : `Clear ${deadLinksCount} Dead Links`}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-xl">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center shrink-0 border border-white/5">
+                  <Brain size={20} className="text-rose-400" />
+                </div>
+                <div className="text-[11px] text-slate-300 leading-relaxed font-medium">
+                  <strong className="text-white uppercase tracking-[0.2em] block mb-1 font-black">Intelligence Protocol:</strong>
+                  MarkFlow validates links by performing a <span className="text-rose-400 font-black">HEAD</span> request. If the server returns a 404 or fails to respond within 5 seconds, it is flagged for resolution.
                 </div>
               </div>
             </div>

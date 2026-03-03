@@ -5,6 +5,15 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.0] - 2026-03-02
+
+### Added
+- **Dead Link Resolution Center**: Implemented a tactical module for managing broken bookmarks, mirroring the high-fidelity UI of the Duplicate Resolver.
+    - **Actionable Stat Card**: The "Dead Links" dashboard card is now interactive, launching the resolution engine on click.
+    - **Reassurance Messaging**: Integrated "Sorting Room" context to clarify that browser bookmarks remain safe during the cleaning process.
+    - **Safe-Purge Workflow**: Added a recommended "Download Backup" step before bulk-deleting broken links.
+    - **Intelligence Protocol**: Added a high-contrast documentation card explaining the HEAD request validation logic (404/Timeout detection).
+
 ## [3.16.0] - 2026-03-02
 
 ### Changed
