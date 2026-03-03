@@ -1376,9 +1376,9 @@ export default function App() {
                   <button 
                     onClick={handleMagicSync} 
                     disabled={isSyncing || !Object.values(localBrowsers).some(Boolean)}
-                    className="w-full py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
+                    <RefreshCw size={16} className={isSyncing ? "animate-spin text-indigo-600" : "text-slate-400"} />
                     {isSyncing ? "Syncing Browsers..." : "Magic Sync"}
                   </button>
                   <input 
@@ -1388,8 +1388,8 @@ export default function App() {
                     ref={fileInputRef} 
                     onChange={handleFileUpload} 
                   />
-                  <button onClick={() => fileInputRef.current?.click()} className="w-full py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2">
-                    <UploadCloudIcon size={16} />
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center justify-center gap-2">
+                    <UploadCloudIcon size={16} className="text-slate-400" />
                     Import HTML File
                   </button>
                 </div>

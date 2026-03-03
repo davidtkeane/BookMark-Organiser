@@ -5,6 +5,11 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.0] - 2026-03-03
+
+### Changed
+- **Total Action Button Unification**: Extended the professional white-and-slate styling to the sidebar's "Magic Sync" and "Import HTML File" buttons. All primary ingest and maintenance actions across the application now share a perfectly consistent visual identity.
+
 ## [3.31.0] - 2026-03-03
 
 ### Changed
