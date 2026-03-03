@@ -5,6 +5,14 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.0] - 2026-03-02
+
+### Changed
+- **Tactical Duplicate UI Polish**: Overhauled the instruction panel in the Duplicate Resolution Center.
+    - **Intelligence Protocol Card**: Replaced the low-contrast "brown" (amber) box with a solid slate-900 tactical card.
+    - **High-Contrast Typography**: Brought information to the "front" with crisp white text, bold tracking, and dedicated indigo highlights for key technical terms like "URL".
+    - **Visual Depth**: Added deep shadows and subtle borders to instructional components for a premium desktop-app feel.
+
 ## [3.15.0] - 2026-03-02
 
 ### Added

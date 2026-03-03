@@ -2697,10 +2697,13 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-3">
-                <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
-                <div className="text-[11px] text-amber-800 leading-relaxed">
-                  <strong>How it works:</strong> Names and folders can be different, but if the <strong>URL</strong> is identical, MarkFlow identifies them as redundant. The oldest version is preserved to maintain your earliest history.
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-xl">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center shrink-0 border border-white/5">
+                  <Info size={20} className="text-indigo-400" />
+                </div>
+                <div className="text-[11px] text-slate-300 leading-relaxed font-medium">
+                  <strong className="text-white uppercase tracking-[0.2em] block mb-1 font-black">Intelligence Protocol:</strong>
+                  Names and folders can be different, but if the <span className="text-indigo-400 font-black">URL</span> is identical, MarkFlow identifies them as redundant. The oldest version is preserved to maintain your earliest history.
                 </div>
               </div>
             </div>
