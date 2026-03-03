@@ -5,6 +5,14 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.22.0] - 2026-03-02
+
+### Added
+- **Dashboard Quick-Purge Actions**: Integrated tactical "Delete" buttons directly into the dashboard stat cards for Duplicates and Dead Links.
+    - **Contextual Visibility**: The "Delete" action only appears on hover when there are items requiring attention (> 0), maintaining a clean UI when the library is healthy.
+    - **Direct Maintenance Path**: Clicking "Delete" instantly launches the corresponding Resolution Center (Duplicate or Dead Link), streamlining the library cleaning workflow.
+    - **Tactical Styling**: Uses a high-contrast rose-colored aesthetic to clearly differentiate destructive actions from informational scans.
+
 ## [3.21.0] - 2026-03-02
 
 ### Changed

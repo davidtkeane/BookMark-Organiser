@@ -1574,6 +1574,10 @@ export default function App() {
               trendColor={duplicatesCount > 0 ? "text-amber-600" : "text-emerald-600"} 
               onClick={() => setShowDuplicateModal(true)}
               onScan={handleFindDuplicates}
+              onPurge={duplicatesCount > 0 ? (e) => {
+                e.stopPropagation();
+                setShowDuplicateModal(true);
+              } : undefined}
             />
             <StatCard 
               title="Dead Links" 
@@ -1583,6 +1587,10 @@ export default function App() {
               trendColor={deadLinksCount > 0 ? "text-red-600" : "text-slate-400"} 
               onClick={() => setShowDeadLinkModal(true)}
               onScan={handleFullDeadLinkScan}
+              onPurge={deadLinksCount > 0 ? (e) => {
+                e.stopPropagation();
+                setShowDeadLinkModal(true);
+              } : undefined}
             />
             <StatCard 
               title="Uncategorized" 
@@ -3978,7 +3986,7 @@ function SmartViewItem({ icon, label, count, color, onClick }: { icon: React.Rea
   );
 }
 
-function StatCard({ title, value, icon, trend, trendColor, onClick, onScan }: { title: string, value: number, icon: React.ReactNode, trend?: string, trendColor?: string, onClick?: () => void, onScan?: (e: React.MouseEvent) => void }) {
+function StatCard({ title, value, icon, trend, trendColor, onClick, onScan, onPurge }: { title: string, value: number, icon: React.ReactNode, trend?: string, trendColor?: string, onClick?: () => void, onScan?: (e: React.MouseEvent) => void, onPurge?: (e: React.MouseEvent) => void }) {
   return (
     <div 
       onClick={onClick}
@@ -3996,6 +4004,17 @@ function StatCard({ title, value, icon, trend, trendColor, onClick, onScan }: { 
               className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[9px] font-black uppercase tracking-widest border border-indigo-100 opacity-0 group-hover:opacity-100 transition-all hover:bg-indigo-600 hover:text-white"
             >
               Scan
+            </button>
+          )}
+          {onPurge && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onPurge(e);
+              }}
+              className="px-2 py-1 bg-rose-50 text-rose-600 rounded-md text-[9px] font-black uppercase tracking-widest border border-rose-100 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-600 hover:text-white"
+            >
+              Delete
             </button>
           )}
           <div className="text-slate-400">{icon}</div>
