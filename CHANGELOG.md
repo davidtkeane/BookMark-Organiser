@@ -5,6 +5,12 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.29.0] - 2026-03-02
+
+### Added
+- **Authentic Browser Branding**: Replaced generic icons in the Local Browsers section with official high-quality logos for Chrome, Brave, Safari, and Firefox.
+- **Theme-Aware Icon Logic**: Applied the `keep-colors` protocol to browser logos, ensuring they maintain their original branding vibrancy even in the Matrix theme.
+
 ## [3.28.0] - 2026-03-02
 
 ### Added

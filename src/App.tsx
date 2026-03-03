@@ -1370,23 +1370,27 @@ export default function App() {
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Local Browsers</h2>
               <div className="space-y-2 mb-6">
                 {localBrowsers.chrome && (
-                  <button onClick={() => handleImportLocalBrowser('chrome')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm">
-                    <Chrome size={16} className="text-blue-500" /> Import from Chrome
+                  <button onClick={() => handleImportLocalBrowser('chrome')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm group">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/Google_Chrome_icon_%28February_2022%29.svg" className="w-4 h-4 keep-colors group-hover:scale-110 transition-transform" alt="Chrome" />
+                    Import from Chrome
                   </button>
                 )}
                 {localBrowsers.brave && (
-                  <button onClick={() => handleImportLocalBrowser('brave')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm">
-                    <Chrome size={16} className="text-orange-500" /> Import from Brave
+                  <button onClick={() => handleImportLocalBrowser('brave')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm group">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Brave_container_icon.svg" className="w-4 h-4 keep-colors group-hover:scale-110 transition-transform" alt="Brave" />
+                    Import from Brave
                   </button>
                 )}
                 {localBrowsers.safari && (
-                  <button onClick={() => handleImportLocalBrowser('safari')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm">
-                    <Compass size={16} className="text-blue-400" /> Import from Safari
+                  <button onClick={() => handleImportLocalBrowser('safari')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm group">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/52/Safari_browser_logo.svg" className="w-4 h-4 keep-colors group-hover:scale-110 transition-transform" alt="Safari" />
+                    Import from Safari
                   </button>
                 )}
                 {localBrowsers.firefox && (
-                  <button onClick={() => handleImportLocalBrowser('firefox')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm">
-                    <Compass size={16} className="text-orange-600" /> Import from Firefox
+                  <button onClick={() => handleImportLocalBrowser('firefox')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm group">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a0/Firefox_logo%2C_2019.svg" className="w-4 h-4 keep-colors group-hover:scale-110 transition-transform" alt="Firefox" />
+                    Import from Firefox
                   </button>
                 )}
               </div>
