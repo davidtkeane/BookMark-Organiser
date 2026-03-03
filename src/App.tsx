@@ -75,17 +75,22 @@ export default function App() {
   const [autoPromptDelay, setAutoPromptDelay] = useState(15); // seconds
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [showAutoPrompt, setShowAutoPrompt] = useState(false);
-  const [autoPromptDismissedUntil, setAutoPromptDismissedUntil] = useState(0);
+  const [autoPromptDismissedUntil, setAutoPromptDismissedUntil] = useState(() => Date.now() + 60000);
   const autoPromptTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [customMatrixLogo, setCustomMatrixLogo] = useState(() => localStorage.getItem('custom_matrix_logo') || null);
   const [userName, setUserName] = useState(() => localStorage.getItem('user_name') || '');
 
   useEffect(() => {
-    if (!autoPromptEnabled || showChat || Date.now() < autoPromptDismissedUntil) return;
+    if (!autoPromptEnabled || showChat || Date.now() < autoPromptDismissedUntil) {
+      if (showAutoPrompt) setShowAutoPrompt(false);
+      return;
+    }
 
     const timer = setInterval(() => {
-      const idleTime = (Date.now() - lastActivity) / 1000;
-      if (idleTime >= autoPromptDelay && !showAutoPrompt && Date.now() > autoPromptDismissedUntil) {
+      const now = Date.now();
+      const idleTime = (now - lastActivity) / 1000;
+      
+      if (idleTime >= autoPromptDelay && !showAutoPrompt && now > autoPromptDismissedUntil) {
         setShowAutoPrompt(true);
       }
     }, 1000);
@@ -93,11 +98,12 @@ export default function App() {
     return () => clearInterval(timer);
   }, [lastActivity, autoPromptEnabled, autoPromptDelay, showChat, showAutoPrompt, autoPromptDismissedUntil]);
 
-  // Auto-hide prompt after 5 seconds if no interaction
+  // Auto-hide prompt after 5 seconds and snooze for 5 minutes
   useEffect(() => {
     if (showAutoPrompt) {
       autoPromptTimerRef.current = setTimeout(() => {
         setShowAutoPrompt(false);
+        setAutoPromptDismissedUntil(Date.now() + 5 * 60 * 1000);
       }, 5000);
     } else {
       if (autoPromptTimerRef.current) clearTimeout(autoPromptTimerRef.current);
@@ -3473,14 +3479,17 @@ export default function App() {
               <div className="p-5 flex items-center gap-4 relative">
                 {/* One-click Close Button */}
                 <button 
-                  onClick={() => setShowAutoPrompt(false)}
-                  className={`absolute top-3 right-3 p-1 rounded-full transition-colors ${
+                  onClick={() => {
+                    setShowAutoPrompt(false);
+                    setAutoPromptDismissedUntil(Date.now() + 5 * 60 * 1000);
+                  }}
+                  className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors ${
                     theme === 'matrix' ? 'hover:bg-emerald-500/10 text-emerald-700 hover:text-emerald-400' :
                     'hover:bg-black/5 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white'
                   }`}
                   title="Close"
                 >
-                  <X size={16} />
+                  <X size={14} />
                 </button>
 
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg animate-pulse ${

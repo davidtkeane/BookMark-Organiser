@@ -5,6 +5,14 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.18.0] - 2026-03-02
+
+### Changed
+- **Quiet Intelligence Engine**: Refined the AI Auto-Prompt logic to be significantly less intrusive.
+    - **Startup Delay**: The assistant now waits 60 seconds after the app opens before its first appearance.
+    - **Global Snooze Protocol**: All dismissals (including manual 'X' clicks and auto-hiding after 5 seconds) now trigger a mandatory 5-minute snooze.
+- **Auto-Prompt UI Refinement**: Repositioned the 'X' close button to the absolute top-right corner with enhanced spacing to prevent accidental "Chat Now" activations.
+
 ## [3.17.0] - 2026-03-02
 
 ### Added
