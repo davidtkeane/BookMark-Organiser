@@ -5,6 +5,13 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.24.0] - 2026-03-02
+
+### Fixed
+- **Matrix Theme Visual Polish**: Resolved an issue where the Matrix green filter was obscuring bookmark icons.
+    - **Color Preservation**: Bookmark favicons (like YouTube red, GitHub black) now retain their original branding colors while the rest of the UI remains in the Matrix digital-rain aesthetic.
+    - **Enhanced Recognition**: Improving icon visibility makes it significantly faster to identify bookmarks at a glance.
+
 ## [3.23.0] - 2026-03-02
 
 ### Added

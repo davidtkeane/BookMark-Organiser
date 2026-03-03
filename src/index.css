@@ -135,6 +135,6 @@ body {
   border-color: #004400 !important;
 }
 
-.matrix img {
+.matrix img:not(.keep-colors) {
   filter: grayscale(100%) sepia(100%) hue-rotate(70deg) saturate(500%) brightness(0.8);
 }

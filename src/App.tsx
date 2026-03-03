@@ -1674,7 +1674,7 @@ export default function App() {
                   >
                     <div className="flex items-start gap-4 overflow-hidden w-full">
                       <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-1">
-                        <img src={bookmark.customIconUrl || `https://www.google.com/s2/favicons?domain=${bookmark.url}&sz=32`} alt="" className="w-4 h-4" onError={(e) => e.currentTarget.style.display = 'none'} referrerPolicy="no-referrer" />
+                        <img src={bookmark.customIconUrl || `https://www.google.com/s2/favicons?domain=${bookmark.url}&sz=32`} alt="" className="w-4 h-4 keep-colors" onError={(e) => e.currentTarget.style.display = 'none'} referrerPolicy="no-referrer" />
                       </div>
                       <div className="overflow-hidden flex-1">
                         <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-1 font-medium">
@@ -4140,7 +4140,7 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
           <img 
             src={imgSrc} 
             alt={bookmark.title} 
-            className={`${isLarge ? 'w-32 h-32' : 'w-16 h-16'} object-contain drop-shadow-2xl group-hover:scale-110 transition-transform duration-500`} 
+            className={`${isLarge ? 'w-32 h-32' : 'w-16 h-16'} object-contain drop-shadow-2xl group-hover:scale-110 transition-transform duration-500 keep-colors`} 
             onError={() => setImgError(true)} 
             referrerPolicy="no-referrer"
           />
@@ -4196,7 +4196,7 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
 
         <div className="flex items-start gap-3 mb-2">
           <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
-            <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} alt="" className="w-3.5 h-3.5" onError={(e) => e.currentTarget.style.display = 'none'} referrerPolicy="no-referrer" />
+            <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} alt="" className="w-3.5 h-3.5 keep-colors" onError={(e) => e.currentTarget.style.display = 'none'} referrerPolicy="no-referrer" />
           </div>
           <h3 className={`font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors
             ${isLarge ? 'text-xl' : 'text-sm line-clamp-2'}`} title={bookmark.title}>
