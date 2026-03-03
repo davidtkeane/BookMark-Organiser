@@ -5,6 +5,15 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.26.0] - 2026-03-02
+
+### Added
+- **Automated Safety Backup Engine**: Integrated a server-side "Safety-First" protocol that automatically captures a full library snapshot before any destructive operation.
+    - **Trigger-Based Backups**: Snapshots are now generated automatically before single deletions, batch purges, and database wipes.
+    - **Rescue Vault**: Backups are stored in the tactical `backups/` directory as timestamped JSON files (`safety-backup-YYYY-MM-DD.json`).
+    - **Auto-Rotation**: Implemented a smart rotation policy that preserves the 20 most recent safety snapshots to manage disk space while maintaining a deep recovery history.
+- **Enhanced Safety Messaging**: Updated the Resolution Centers and Data Wipe interfaces to reassure users that an automatic rescue point is created before data is removed.
+
 ## [3.25.0] - 2026-03-02
 
 ### Changed

@@ -16,6 +16,31 @@ const BACKUPS_DIR = path.join(process.cwd(), 'backups');
 if (!fs.existsSync(ARCHIVES_DIR)) fs.mkdirSync(ARCHIVES_DIR);
 if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR);
 
+// Automated Safety Backup Helper
+function createSafetyBackup() {
+  try {
+    const bookmarks = db.prepare('SELECT * FROM bookmarks').all();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(BACKUPS_DIR, `safety-backup-${timestamp}.json`);
+    fs.writeFileSync(backupPath, JSON.stringify(bookmarks, null, 2));
+    console.log(`[Safety] Backup created: ${backupPath}`);
+    
+    // Rotate safety backups (keep last 20)
+    const files = fs.readdirSync(BACKUPS_DIR)
+      .filter(f => f.startsWith('safety-backup-'))
+      .map(f => ({ name: f, time: fs.statSync(path.join(BACKUPS_DIR, f)).mtime.getTime() }))
+      .sort((a, b) => b.time - a.time);
+    
+    if (files.length > 20) {
+      files.slice(20).forEach(f => {
+        try { fs.unlinkSync(path.join(BACKUPS_DIR, f.name)); } catch(e) {}
+      });
+    }
+  } catch (e) {
+    console.error('[Safety] Backup failed:', e);
+  }
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS bookmarks (
     id TEXT PRIMARY KEY,
@@ -154,6 +179,7 @@ async function startServer() {
   app.post("/api/bookmarks/delete-batch", (req, res) => {
     const { ids } = req.body;
     try {
+      createSafetyBackup();
       const deleteStmt = db.prepare('DELETE FROM bookmarks WHERE id = ?');
       const deleteBatch = db.transaction((idList) => {
         for (const id of idList) {
@@ -173,6 +199,7 @@ async function startServer() {
   app.delete("/api/bookmarks/:id", (req, res) => {
     const { id } = req.params;
     try {
+      createSafetyBackup();
       db.prepare('DELETE FROM bookmarks WHERE id = ?').run(id);
       // Also delete archive if exists
       const archivePath = path.join(ARCHIVES_DIR, `${id}.html`);
@@ -185,6 +212,7 @@ async function startServer() {
 
   app.post("/api/bookmarks/clear", (req, res) => {
     try {
+      createSafetyBackup();
       db.prepare('DELETE FROM bookmarks').run();
       res.json({ success: true });
     } catch (error) {

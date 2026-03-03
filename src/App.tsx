@@ -2042,13 +2042,18 @@ export default function App() {
                   { text: "H3llCoin Ecosystem Integration", done: true },
                   { text: "Tactical Maintenance Dashboard (Quick-Scan & Purge)", done: true },
                   { text: "Exhaustive Deep Scan Engine (Multi-batch validation)", done: true },
+                  { text: "Automated Safety Backup Engine (Pre-Deletion Snapshots)", done: true },
                   { text: "iOS Standalone App (App Store Release)", done: false },
                   { text: "Browser Extension (Save directly to MarkFlow)", done: false },
                 ]}
               />
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.23.0)</h4>
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.26.0)</h4>
                 <ul className="space-y-1">
+                  <li className="text-xs text-slate-600 flex items-center gap-2">
+                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
+                    Automated Safety Backups (Created before any deletion)
+                  </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
                     Tactical Dashboard Actions (Quick Backup, Scan, & Purge)
@@ -2056,10 +2061,6 @@ export default function App() {
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
                     Exhaustive Deep Scan Engine (Loop through 10k+ links)
-                  </li>
-                  <li className="text-xs text-slate-600 flex items-center gap-2">
-                    <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    High-Fidelity Resolution Centers (Duplicate & Dead Link)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
@@ -2770,8 +2771,10 @@ export default function App() {
                         </p>
                       </div>
                       <button onClick={() => {
-                        clearDatabase();
-                        setShowDataModal(false);
+                        if (confirm("Tactical Wipe: This erases EVERYTHING in MarkFlow. An automatic safety backup will be created in the backups folder first. Proceed?")) {
+                          clearDatabase();
+                          setShowDataModal(false);
+                        }
                       }} className="px-6 py-2.5 bg-white text-rose-600 rounded-xl text-xs font-bold hover:bg-rose-50 transition-all active:scale-95 flex items-center gap-2">
                         <AlertTriangle size={14} /> Wipe Everything
                       </button>
@@ -2844,9 +2847,9 @@ export default function App() {
                     <DownloadCloud size={20} />
                   </div>
                   <h4 className="font-bold text-slate-900 text-sm mb-1">Safety First: Backup</h4>
-                  <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">Highly recommended! Download a full JSON snapshot before purging duplicates.</p>
+                  <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">Highly recommended! MarkFlow also creates an <strong>automatic rescue snapshot</strong> in the backups folder before every purge.</p>
                   <button onClick={handleBackup} className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all active:scale-95">
-                    Download Backup
+                    Manual Backup
                   </button>
                 </div>
 
@@ -2927,9 +2930,9 @@ export default function App() {
                     <DownloadCloud size={20} />
                   </div>
                   <h4 className="font-bold text-slate-900 text-sm mb-1">Safety First: Backup</h4>
-                  <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">Highly recommended! Download a full JSON snapshot before purging dead links.</p>
+                  <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">Highly recommended! MarkFlow also creates an <strong>automatic rescue snapshot</strong> in the backups folder before every purge.</p>
                   <button onClick={handleBackup} className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all active:scale-95">
-                    Download Backup
+                    Manual Backup
                   </button>
                 </div>
 
