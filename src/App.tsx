@@ -1377,7 +1377,7 @@ export default function App() {
                 )}
                 {localBrowsers.brave && (
                   <button onClick={() => handleImportLocalBrowser('brave')} className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 text-sm text-slate-700 transition-colors border border-slate-200 bg-white shadow-sm group">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Brave_container_icon.svg" className="w-4 h-4 keep-colors group-hover:scale-110 transition-transform" alt="Brave" />
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Brave_lion_icon.svg" className="w-4 h-4 keep-colors group-hover:scale-110 transition-transform" alt="Brave" />
                     Import from Brave
                   </button>
                 )}
