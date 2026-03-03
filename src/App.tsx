@@ -331,6 +331,7 @@ export default function App() {
   const [showDeadLinkModal, setShowDeadLinkModal] = useState(false);
   const [isResolvingDuplicates, setIsResolvingDuplicates] = useState(false);
   const [isResolvingDeadLinks, setIsResolvingDeadLinks] = useState(false);
+  const [isStoppingScan, setIsStoppingScan] = useState(false);
 
   const handleAutoResolveDeadLinks = async () => {
     setIsResolvingDeadLinks(true);
@@ -735,52 +736,72 @@ export default function App() {
       return;
     }
 
-    if (!confirm(`Full Dead Link Scan: This will check ${Math.min(unchecked.length, 500)} links. This may take a minute. Proceed?`)) {
+    if (!confirm(`Full Deep Scan: This will check all ${unchecked.length} unchecked links. It may take some time depending on your connection. Proceed?`)) {
       return;
     }
 
     setShowChecksModal(true);
-    setCheckProgress({ current: 0, total: 100, status: 'Initializing deep scan...' });
+    setIsStoppingScan(false);
+    setCheckProgress({ current: 0, total: 100, status: 'Initializing global scan engine...' });
 
-    const newBookmarks = [...bookmarks];
-    const targetBatch = unchecked.slice(0, 500); // Check up to 500 at once
-    let checkedCount = 0;
+    let currentBookmarks = [...bookmarks];
+    let globalCheckedCount = 0;
+    const totalToCheck = unchecked.length;
 
-    for (let i = 0; i < targetBatch.length; i += 10) {
-      const batch = targetBatch.slice(i, i + 10);
-      await Promise.all(batch.map(async (b) => {
-        try {
-          const res = await fetch('/api/check-health', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: b.url })
-          });
-          const data = await res.json();
-          // Find the bookmark in newBookmarks and update it
-          const idx = newBookmarks.findIndex(x => x.id === b.id);
-          if (idx !== -1) newBookmarks[idx].status = data.status;
-        } catch (e) {
-          const idx = newBookmarks.findIndex(x => x.id === b.id);
-          if (idx !== -1) newBookmarks[idx].status = 'dead';
-        }
-        checkedCount++;
-        setCheckProgress({ 
-          current: Math.floor((checkedCount / targetBatch.length) * 100), 
-          total: 100, 
-          status: `Deep scanning link ${checkedCount} of ${targetBatch.length}...` 
-        });
-      }));
+    // Process in batches of 100 for safety and progress updates
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < totalToCheck; i += BATCH_SIZE) {
+      if (isStoppingScan) break;
+
+      const batch = unchecked.slice(i, i + BATCH_SIZE);
+      setCheckProgress({ 
+        current: Math.floor((globalCheckedCount / totalToCheck) * 100), 
+        total: 100, 
+        status: `Scanning batch ${Math.floor(i/BATCH_SIZE) + 1}... (${globalCheckedCount}/${totalToCheck})` 
+      });
+
+      // Sub-process the batch in parallel chunks of 10
+      for (let j = 0; j < batch.length; j += 10) {
+        if (isStoppingScan) break;
+        const chunk = batch.slice(j, j + 10);
+        
+        await Promise.all(chunk.map(async (b) => {
+          try {
+            const res = await fetch('/api/check-health', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: b.url })
+            });
+            const data = await res.json();
+            const idx = currentBookmarks.findIndex(x => x.id === b.id);
+            if (idx !== -1) currentBookmarks[idx].status = data.status;
+          } catch (e) {
+            const idx = currentBookmarks.findIndex(x => x.id === b.id);
+            if (idx !== -1) currentBookmarks[idx].status = 'dead';
+          }
+          globalCheckedCount++;
+        }));
+
+        setCheckProgress(prev => ({ 
+          ...prev,
+          current: Math.floor((globalCheckedCount / totalToCheck) * 100),
+          status: `Processing: ${globalCheckedCount} / ${totalToCheck} links validated...`
+        }));
+      }
+
+      // Save progress after each batch of 100
+      setBookmarks([...currentBookmarks]);
+      await saveBookmarksToDB(currentBookmarks);
     }
 
-    setCheckProgress({ current: 100, total: 100, status: 'Finalizing scan...' });
-    setBookmarks(newBookmarks);
-    await saveBookmarksToDB(newBookmarks);
-    awardXp(Math.floor(targetBatch.length / 2));
+    setCheckProgress({ current: 100, total: 100, status: isStoppingScan ? 'Scan stopped by user.' : 'Exhaustive scan complete!' });
+    awardXp(Math.floor(globalCheckedCount / 2));
     
     setTimeout(() => {
       setShowChecksModal(false);
+      setIsStoppingScan(false);
       setActiveTab('dead');
-    }, 1500);
+    }, 2000);
   };
 
   const handleRunChecks = async () => {
@@ -1905,6 +1926,15 @@ export default function App() {
                 ></motion.div>
               </div>
               <div className="text-xs text-slate-400 text-right">{checkProgress.current}%</div>
+
+              {checkProgress.current < 100 && (
+                <button 
+                  onClick={() => setIsStoppingScan(true)}
+                  className="mt-6 w-full py-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold hover:bg-rose-100 transition-all border border-rose-100"
+                >
+                  Stop Scan
+                </button>
+              )}
             </div>
           </motion.div>
         </div>

@@ -5,6 +5,14 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.20.0] - 2026-03-02
+
+### Added
+- **Exhaustive Deep Scan Engine**: Overhauled the dead link validator to support full-library automated scanning.
+    - **Multi-Batch Processing**: The engine now automatically moves through your entire library in batches of 100, checking every "Unchecked" link without requiring manual restarts.
+    - **Progress Persistence**: Results are now saved to the tactical database after every batch of 100 to ensure no progress is lost in case of a crash or interruption.
+    - **User-Controlled Cancellation**: Added a "Stop Scan" button to the progress modal, allowing users to safely pause maintenance tasks at any time.
+
 ## [3.19.0] - 2026-03-02
 
 ### Added
