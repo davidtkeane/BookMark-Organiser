@@ -5,6 +5,11 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.31.0] - 2026-03-03
+
+### Changed
+- **Unified Header Button Styling**: Standardized the "AI Enrich" and "AI Organize" buttons to use the same professional white-and-slate aesthetic as "Scan Now" and "Export View". This ensures visual consistency across all primary header actions.
+
 ## [3.30.0] - 2026-03-03
 
 ### Changed

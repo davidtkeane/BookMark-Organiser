@@ -1540,12 +1540,12 @@ export default function App() {
               <Share2 size={16} className="text-slate-400" />
               Export View
             </button>
-            <button onClick={handleAIEnrich} disabled={isEnriching} className="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50">
-              {isEnriching ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+            <button onClick={handleAIEnrich} disabled={isEnriching} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50">
+              {isEnriching ? <Loader2 size={16} className="animate-spin text-indigo-600" /> : <Wand2 size={16} className="text-slate-400" />}
               AI Enrich
             </button>
-            <button onClick={() => setShowOrganizeModal(true)} disabled={isOrganizing} className="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50">
-              {isOrganizing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            <button onClick={() => setShowOrganizeModal(true)} disabled={isOrganizing} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50">
+              {isOrganizing ? <Loader2 size={16} className="animate-spin text-indigo-600" /> : <Sparkles size={16} className="text-slate-400" />}
               AI Organize
             </button>
           </div>
