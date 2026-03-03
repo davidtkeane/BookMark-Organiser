@@ -1565,6 +1565,7 @@ export default function App() {
               value={bookmarks.length} 
               icon={<LinkIcon size={20} />} 
               onScan={handleRefreshLibrary}
+              onBackup={handleBackup}
             />
             <StatCard 
               title="Duplicates Found" 
@@ -2039,29 +2040,30 @@ export default function App() {
                   { text: "AI Personalization (Address user by name)", done: true },
                   { text: "Universal Command Center (Tabbed Settings & Backups)", done: true },
                   { text: "H3llCoin Ecosystem Integration", done: true },
-                  { text: "Cross-Platform Magic Sync (Windows & Linux support)", done: false },
+                  { text: "Tactical Maintenance Dashboard (Quick-Scan & Purge)", done: true },
+                  { text: "Exhaustive Deep Scan Engine (Multi-batch validation)", done: true },
                   { text: "iOS Standalone App (App Store Release)", done: false },
                   { text: "Browser Extension (Save directly to MarkFlow)", done: false },
                 ]}
               />
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.7.0)</h4>
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Recent Changelog (v3.23.0)</h4>
                 <ul className="space-y-1">
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    AI Personalization (User Names & Timestamps)
+                    Tactical Dashboard Actions (Quick Backup, Scan, & Purge)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Universal Sidebar-Tabbed Architecture (Settings, Wiki, Data)
+                    Exhaustive Deep Scan Engine (Loop through 10k+ links)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    H3llCoin Support Button Integration
+                    High-Fidelity Resolution Centers (Duplicate & Dead Link)
                   </li>
                   <li className="text-xs text-slate-600 flex items-center gap-2">
                     <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                    Modal Click-Outside-to-Close UX
+                    Theme-Aware Status Badges & White-Text Clarity Fix
                   </li>
                 </ul>
               </div>
@@ -3986,7 +3988,7 @@ function SmartViewItem({ icon, label, count, color, onClick }: { icon: React.Rea
   );
 }
 
-function StatCard({ title, value, icon, trend, trendColor, onClick, onScan, onPurge }: { title: string, value: number, icon: React.ReactNode, trend?: string, trendColor?: string, onClick?: () => void, onScan?: (e: React.MouseEvent) => void, onPurge?: (e: React.MouseEvent) => void }) {
+function StatCard({ title, value, icon, trend, trendColor, onClick, onScan, onPurge, onBackup }: { title: string, value: number, icon: React.ReactNode, trend?: string, trendColor?: string, onClick?: () => void, onScan?: (e: React.MouseEvent) => void, onPurge?: (e: React.MouseEvent) => void, onBackup?: (e: React.MouseEvent) => void }) {
   return (
     <div 
       onClick={onClick}
@@ -3995,6 +3997,17 @@ function StatCard({ title, value, icon, trend, trendColor, onClick, onScan, onPu
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-slate-500">{title}</h3>
         <div className="flex items-center gap-2">
+          {onBackup && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onBackup(e);
+              }}
+              className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md text-[9px] font-black uppercase tracking-widest border border-emerald-100 opacity-0 group-hover:opacity-100 transition-all hover:bg-emerald-600 hover:text-white"
+            >
+              Backup
+            </button>
+          )}
           {onScan && (
             <button 
               onClick={(e) => {

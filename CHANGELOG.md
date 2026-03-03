@@ -5,6 +5,15 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.23.0] - 2026-03-02
+
+### Added
+- **Dashboard Quick-Backup**: Integrated an emerald-colored "Backup" button into the Total Bookmarks stat card. Allows for instant library snapshots with a single click directly from the main mission-control view.
+- **Roadmap Synchronization**: Fully updated the internal application Roadmap (Phase 7) to reflect the completion of the Tactical Maintenance Dashboard and the Exhaustive Deep Scan Engine.
+
+### Changed
+- **Unified StatCard Interface**: Standardized the layout of dashboard metrics to support Scan, Backup, and Purge actions consistently across all categories.
+
 ## [3.22.0] - 2026-03-02
 
 ### Added
