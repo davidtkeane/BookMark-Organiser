@@ -4032,44 +4032,44 @@ function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case 'alive':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100 shadow-sm">
-          <CheckCircle2 size={10} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider shadow-lg border border-emerald-500/20">
+          <CheckCircle2 size={10} strokeWidth={3} />
           Active
         </span>
       );
     case 'dead':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 text-red-700 text-[10px] font-bold border border-red-100 shadow-sm">
-          <XCircle size={10} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-rose-600 text-white text-[9px] font-black uppercase tracking-wider shadow-lg border border-rose-500/20">
+          <XCircle size={10} strokeWidth={3} />
           Dead Link
         </span>
       );
     case 'duplicate':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-100 shadow-sm">
-          <Copy size={10} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-600 text-white text-[9px] font-black uppercase tracking-wider shadow-lg border border-amber-500/20">
+          <Copy size={10} strokeWidth={3} />
           Duplicate
         </span>
       );
     case 'redirect':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100 shadow-sm">
-          <Activity size={10} />
-          Redirects
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-600 text-white text-[9px] font-black uppercase tracking-wider shadow-lg border border-blue-500/20">
+          <Activity size={10} strokeWidth={3} />
+          Redirect
         </span>
       );
     case 'archived':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-100 shadow-sm">
-          <ArchiveRestore size={10} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-600 text-white text-[9px] font-black uppercase tracking-wider shadow-lg border border-purple-500/20">
+          <ArchiveRestore size={10} strokeWidth={3} />
           Archived
         </span>
       );
     case 'unknown':
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-50 text-slate-500 text-[10px] font-bold border border-slate-200 shadow-sm">
-          <Activity size={10} />
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-600 text-white text-[9px] font-black uppercase tracking-wider shadow-lg border border-slate-500/20">
+          <Activity size={10} strokeWidth={3} />
           Unchecked
         </span>
       );
@@ -4125,13 +4125,13 @@ function BookmarkGridCard({ bookmark, idx, onDelete, onResurrect, onUpdate, onGe
             onUpdate(updated);
           }}>
             {bookmark.isChecked ? (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-500 text-white text-[10px] font-bold shadow-lg cursor-pointer hover:bg-green-600 transition-colors">
-                <CheckCircle2 size={12} />
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider shadow-lg border border-emerald-500/20 cursor-pointer hover:bg-emerald-700 transition-colors">
+                <CheckCircle2 size={10} strokeWidth={3} />
                 Checked
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-200 text-slate-600 text-[10px] font-bold shadow-sm cursor-pointer hover:bg-slate-300 transition-colors">
-                <Activity size={12} />
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-600 text-white text-[9px] font-black uppercase tracking-wider shadow-lg border border-slate-500/20 cursor-pointer hover:bg-slate-700 transition-colors">
+                <Activity size={10} strokeWidth={3} />
                 Unchecked
               </span>
             )}

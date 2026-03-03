@@ -5,6 +5,14 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.21.0] - 2026-03-02
+
+### Changed
+- **High-Contrast Label Overhaul**: Replaced all low-contrast bookmark status labels with high-fidelity tactical badges.
+    - **Font to Front**: Switched to solid, saturated backgrounds (Emerald, Rose, Amber, Slate) with crisp **white text** and black font weights.
+    - **Theme-Agnostic Visibility**: Guaranteed readability across Light, Dark, Matrix, and Ranger themes by eliminating semi-transparent "filter" effects on critical status notices.
+    - **Visual Consistency**: Unified the styling of "Checked", "Unchecked", "Duplicate", and "Dead Link" indicators with a consistent 9px black uppercase tracking design.
+
 ## [3.20.0] - 2026-03-02
 
 ### Added
