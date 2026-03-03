@@ -321,6 +321,67 @@ export default function App() {
     }
   };
 
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [isResolvingDuplicates, setIsResolvingDuplicates] = useState(false);
+
+  const handleAutoResolveDuplicates = async () => {
+    setIsResolvingDuplicates(true);
+    try {
+      // Group by URL
+      const urlGroups = new Map<string, any[]>();
+      bookmarks.forEach(b => {
+        const normalized = b.url.replace(/\/$/, '').toLowerCase();
+        if (!urlGroups.has(normalized)) urlGroups.set(normalized, []);
+        urlGroups.get(normalized)?.push(b);
+      });
+
+      const idsToDelete: string[] = [];
+      const keptBookmarks: any[] = [];
+
+      urlGroups.forEach((group) => {
+        if (group.length > 1) {
+          // Sort by dateAdded (oldest first)
+          const sorted = [...group].sort((a, b) => {
+            const dateA = a.dateAdded ? new Date(a.dateAdded).getTime() : 0;
+            const dateB = b.dateAdded ? new Date(b.dateAdded).getTime() : 0;
+            return dateA - dateB;
+          });
+          
+          // Keep the first one, delete the rest
+          const [keeper, ...redundant] = sorted;
+          keptBookmarks.push({ ...keeper, status: 'alive' });
+          redundant.forEach(r => idsToDelete.push(r.id));
+        } else {
+          keptBookmarks.push({ ...group[0], status: 'alive' });
+        }
+      });
+
+      if (idsToDelete.length > 0) {
+        await fetch('/api/bookmarks/delete-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: idsToDelete })
+        });
+        
+        // Refresh local state
+        const bmsRes = await fetch('/api/bookmarks');
+        const bmsData = await bmsRes.json();
+        setBookmarks(bmsData);
+        
+        awardXp(idsToDelete.length * 2);
+        alert(`Successfully resolved ${idsToDelete.length} duplicates. One copy of each URL has been preserved.`);
+      } else {
+        alert("No duplicates to resolve based on exact URL matches.");
+      }
+      setShowDuplicateModal(false);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to resolve duplicates.");
+    } finally {
+      setIsResolvingDuplicates(false);
+    }
+  };
+
   const clearDatabase = async () => {
     if (!confirm("Are you sure you want to delete all bookmarks?")) return;
     await fetch('/api/bookmarks/clear', { method: 'POST' });
@@ -1371,7 +1432,14 @@ export default function App() {
           {/* Stats Row */}
           <div className="grid grid-cols-4 gap-4 mb-8">
             <StatCard title="Total Bookmarks" value={bookmarks.length} icon={<LinkIcon size={20} />} />
-            <StatCard title="Duplicates Found" value={duplicatesCount} icon={<Copy size={20} />} trend={duplicatesCount > 0 ? "Needs attention" : "All clean"} trendColor={duplicatesCount > 0 ? "text-amber-600" : "text-emerald-600"} />
+            <StatCard 
+              title="Duplicates Found" 
+              value={duplicatesCount} 
+              icon={<Copy size={20} />} 
+              trend={duplicatesCount > 0 ? "Needs attention" : "All clean"} 
+              trendColor={duplicatesCount > 0 ? "text-amber-600" : "text-emerald-600"} 
+              onClick={() => setShowDuplicateModal(true)}
+            />
             <StatCard title="Dead Links" value={deadLinksCount} icon={<AlertTriangle size={20} />} trend="404s & Timeouts" trendColor={deadLinksCount > 0 ? "text-red-600" : "text-slate-400"} />
             <StatCard title="Uncategorized" value={uncategorizedCount} icon={<Folder size={20} />} trend="Ready for AI sorting" trendColor={uncategorizedCount > 0 ? "text-indigo-600" : "text-slate-400"} />
           </div>
@@ -2560,6 +2628,86 @@ export default function App() {
         }}
       />
 
+      {/* Duplicate Resolution Modal */}
+      {showDuplicateModal && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4"
+          onClick={() => setShowDuplicateModal(false)}
+        >
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col border border-slate-200"
+          >
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                  <Copy size={22} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Duplicate Resolution Center</h2>
+                  <p className="text-xs text-slate-500 font-medium tracking-tight">Strategy: Exact URL Matching</p>
+                </div>
+              </div>
+              <button onClick={() => setShowDuplicateModal(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors">
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            <div className="p-8 space-y-6">
+              <div className="bg-indigo-600 text-white rounded-2xl p-6 shadow-lg shadow-indigo-200 flex items-center gap-6">
+                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 border border-white/20">
+                  <ShieldCheck size={32} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-1 tracking-tight">This is the "Sorting Room"</h4>
+                  <p className="text-sm text-indigo-100 leading-relaxed opacity-90">
+                    Your browser's original bookmarks are 100% safe. We are cleaning the MarkFlow library. You can re-export and upload back to your browser later!
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50 hover:border-emerald-200 transition-all group">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                    <DownloadCloud size={20} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">Safety First: Backup</h4>
+                  <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">Highly recommended! Download a full JSON snapshot before purging duplicates.</p>
+                  <button onClick={handleBackup} className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all active:scale-95">
+                    Download Backup
+                  </button>
+                </div>
+
+                <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50 hover:border-rose-200 transition-all group">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm group-hover:bg-rose-500 group-hover:text-white transition-all">
+                    <Zap size={20} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">Auto-Resolve Purge</h4>
+                  <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">Keeps the <strong>oldest</strong> entry for each unique URL and permanently deletes the rest.</p>
+                  <button 
+                    onClick={handleAutoResolveDuplicates}
+                    disabled={isResolvingDuplicates}
+                    className="w-full py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isResolvingDuplicates ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    {isResolvingDuplicates ? 'Resolving...' : `Clear ${duplicatesCount} Duplicates`}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-3">
+                <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-amber-800 leading-relaxed">
+                  <strong>How it works:</strong> Names and folders can be different, but if the <strong>URL</strong> is identical, MarkFlow identifies them as redundant. The oldest version is preserved to maintain your earliest history.
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Settings Modal */}
       {showSettings && (
         <div 
@@ -3581,9 +3729,12 @@ function SmartViewItem({ icon, label, count, color, onClick }: { icon: React.Rea
   );
 }
 
-function StatCard({ title, value, icon, trend, trendColor }: { title: string, value: number, icon: React.ReactNode, trend?: string, trendColor?: string }) {
+function StatCard({ title, value, icon, trend, trendColor, onClick }: { title: string, value: number, icon: React.ReactNode, trend?: string, trendColor?: string, onClick?: () => void }) {
   return (
-    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+    <div 
+      onClick={onClick}
+      className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm transition-all ${onClick ? 'cursor-pointer hover:border-indigo-300 hover:shadow-md active:scale-[0.98]' : ''}`}
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-slate-500">{title}</h3>
         <div className="text-slate-400">{icon}</div>

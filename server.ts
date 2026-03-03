@@ -151,6 +151,25 @@ async function startServer() {
     }
   });
 
+  app.post("/api/bookmarks/delete-batch", (req, res) => {
+    const { ids } = req.body;
+    try {
+      const deleteStmt = db.prepare('DELETE FROM bookmarks WHERE id = ?');
+      const deleteBatch = db.transaction((idList) => {
+        for (const id of idList) {
+          deleteStmt.run(id);
+          // Also delete archive if exists
+          const archivePath = path.join(ARCHIVES_DIR, `${id}.html`);
+          if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath);
+        }
+      });
+      deleteBatch(ids);
+      res.json({ success: true, count: ids.length });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   app.delete("/api/bookmarks/:id", (req, res) => {
     const { id } = req.params;
     try {

@@ -5,6 +5,16 @@ All notable changes to the MarkFlow Bookmark Manager will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.0] - 2026-03-02
+
+### Added
+- **Duplicate Resolution Center**: A dedicated high-fidelity module for managing redundant bookmarks.
+    - **Interactive Stat Cards**: The "Duplicates Found" dashboard card is now actionable, providing a direct link to the resolution engine.
+    - **The "Sorting Room" Concept**: Integrated reassuring messaging explaining that MarkFlow is a safe workspace and browser bookmarks remain untouched.
+    - **Safe-Purge Workflow**: Added a recommended "Download Backup" step before executing any bulk deletions.
+    - **URL-First Logic**: Implemented a smart resolution strategy that identifies duplicates by exact URL (ignoring name/folder variations) and preserves the oldest historical entry.
+- **High-Performance Batch Deletion**: Added a new `/api/bookmarks/delete-batch` endpoint to the Express server to efficiently handle thousands of simultaneous deletions.
+
 ## [3.14.0] - 2026-03-02
 
 ### Added
