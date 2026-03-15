@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 export async function categorizeBookmarksWithAI(bookmarks: any[], existingFolders: string[], strategy: string = 'topic', model: string = "gemini-3-flash-preview") {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("Gemini API key is missing. Please add it to your .env file.");
   }
@@ -51,7 +51,7 @@ export async function categorizeBookmarksWithAI(bookmarks: any[], existingFolder
 }
 
 export async function enrichBookmarksWithAI(bookmarks: any[], model: string = "gemini-3-flash-preview") {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("Gemini API key is missing. Please add it to your .env file.");
   }
@@ -98,7 +98,7 @@ export async function enrichBookmarksWithAI(bookmarks: any[], model: string = "g
 }
 
 export async function semanticSearchBookmarks(query: string, bookmarks: any[], model: string = "gemini-3-flash-preview") {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("Gemini API key is missing. Please add it to your .env file.");
   }
@@ -136,7 +136,7 @@ export async function semanticSearchBookmarks(query: string, bookmarks: any[], m
 }
 
 export async function generateKeywordsWithAI(bookmark: any, model: string = "gemini-3-flash-preview") {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("Gemini API key is missing. Please add it to your .env file.");
   }
